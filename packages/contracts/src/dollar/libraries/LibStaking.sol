@@ -371,6 +371,7 @@ library LibStaking {
             .mul(stakingStore.governancePerBlock)
             .mul(pool.allocationPoints)
             .div(stakingStore.totalAllocationPoints);
+        // TOCHECK: is it possible to grief treasury on frequent pool updates?
         stakingStore.rewardToken.mint(
             store.treasuryAddress,
             governanceReward.div(stakingStore.governanceTreasuryDivider)
