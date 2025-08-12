@@ -3,8 +3,10 @@ pragma solidity 0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// TOWRITE: unused import
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+// TOWRITE: unused import
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20Ubiquity} from "../interfaces/IERC20Ubiquity.sol";
 import {AppStorage, LibAppStorage} from "./LibAppStorage.sol";
@@ -289,6 +291,9 @@ library LibStaking {
      * @notice Stakes LP tokens to the staking contract for Governance tokens allocation
      * @param poolId Pool id
      * @param amount Amount of LP tokens to stake
+     * TOCHECK: is it possible to stake/unstake/update from uninitialized pools?
+     * TOCHECK: what if reward and stake tokens are equal?
+     * TOCHECK: `whenNotPaused` modifier not used?
      */
     function stake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
@@ -349,6 +354,7 @@ library LibStaking {
     /**
      * @notice Updates reward variables of the given pool to be up-to-date
      * @param poolId Pool id
+     * TOCHECK: can we use UBQ as collateral?
      */
     function updateStakingPool(uint256 poolId) internal {
         AppStorage storage store = LibAppStorage.appStorage();
@@ -512,6 +518,7 @@ library LibStaking {
      * @param poolId Pool id
      * @param allocationPoints New allocation points
      * @param poolIdsToUpdate Array of pool ids where to trigger update
+     * TOCHECK: does triggering update affects calculation?
      */
     function updateStakingPool(
         uint256 poolId,
