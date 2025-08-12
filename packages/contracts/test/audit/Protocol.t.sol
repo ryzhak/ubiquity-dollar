@@ -15,6 +15,7 @@ contract ProtocolTest is DiamondTestSetup {
     MockERC20 stakeToken2;
 
     address user = makeAddr("user");
+    address user2 = makeAddr("user2");
 
     function setUp() public override {
         super.setUp();
@@ -52,16 +53,24 @@ contract ProtocolTest is DiamondTestSetup {
 
         // mint 100 STK tokens to user
         stakeToken.mint(user, 100 ether);
-
         // mint 100 STK2 tokens to user
         stakeToken2.mint(user, 100 ether);
-
         // user approves diamond to spend STK tokens
         vm.prank(user);
         stakeToken.approve(address(diamond), type(uint256).max);
-
         // user approves diamond to spend STK2 tokens
         vm.prank(user);
+        stakeToken2.approve(address(diamond), type(uint256).max);
+
+        // mint 100 STK tokens to user2
+        stakeToken.mint(user2, 100 ether);
+        // mint 100 STK2 tokens to user2
+        stakeToken2.mint(user2, 100 ether);
+        // user2 approves diamond to spend STK tokens
+        vm.prank(user2);
+        stakeToken.approve(address(diamond), type(uint256).max);
+        // user2 approves diamond to spend STK2 tokens
+        vm.prank(user2);
         stakeToken2.approve(address(diamond), type(uint256).max);
     }
 
@@ -299,6 +308,57 @@ contract ProtocolTest is DiamondTestSetup {
 
         poolInfo = stakingFacet.getStakingPoolInfo(0);
         console2.log(poolInfo.allocationPoints);
+    }
+
+    //=========
+    // Other
+    //=========
+
+    /**
+     * Scenario:
+     * 1. User stakes 1 STK
+     * 2. 10 blocks passed
+     * 3. User2 stakes 1 STK
+     * 4. 10 blocks passed
+     * 5. Pool is refreshed
+     * 
+     * At this point:
+     * - `accumulatedGovernancePerShare`: `15e12` (amount of tokens a single user would've got per 1 staked token 
+     * if he staked from the beginning of the staking pool)
+     * - `user.rewardDebt`: `0` (user staked from the beginning of the staking pool)
+     * - `user2.rewardDebt`: `10e18` (user2 staked in the middle of the staking period hence he is not eligible for
+     * the full 15 tokens reward, we calculate `rewardDebt` as `amount * accumulatedGovernancePerShare = 1 * 10` so it 
+     * looked like user2 already got rewards)
+     */
+    function testCheckHowAccumulatedGovernancePerShareWorks() public {
+        LibStaking.PoolInfo memory poolInfo = stakingFacet.getStakingPoolInfo(0);
+        LibStaking.UserInfo memory userInfo = stakingFacet.getStakingUserInfo(0, user);
+        LibStaking.UserInfo memory userInfo2 = stakingFacet.getStakingUserInfo(0, user2);
+
+        console2.log("accumulatedGovernancePerShare:", poolInfo.accumulatedGovernancePerShare);
+        console2.log("user rewardDebt:", userInfo.rewardDebt);
+        console2.log("user2 rewardDebt:", userInfo2.rewardDebt);
+
+        vm.prank(user);
+        stakingFacet.stake(0, 1 ether);
+
+        // 10 blocks pass
+        vm.roll(block.number + 10);
+
+        vm.prank(user2);
+        stakingFacet.stake(0, 1 ether);
+
+        // 10 blocks pass
+        vm.roll(block.number + 10);
+
+        stakingFacet.updateStakingPool(0);
+
+        poolInfo = stakingFacet.getStakingPoolInfo(0);
+        userInfo = stakingFacet.getStakingUserInfo(0, user);
+        userInfo2 = stakingFacet.getStakingUserInfo(0, user2);
+        console2.log("accumulatedGovernancePerShare:", poolInfo.accumulatedGovernancePerShare);
+        console2.log("user rewardDebt:", userInfo.rewardDebt);
+        console2.log("user2 rewardDebt:", userInfo2.rewardDebt);
     }
 
     //================
