@@ -141,6 +141,7 @@ library LibStaking {
      * @param poolId Pool id
      * @param user User address
      * @return Staking rewards amount
+     * TOCHECK: check how pending rewards work, see: https://solodit.cyfrin.io/issues/l-01-masterchef-pendingconcur-shows-increasing-reward-amounts-after-mining-period-ends-code4rena-concur-finance-concur-finance-contest-git
      */
     function getPendingStakingRewards(
         uint256 poolId,
@@ -297,6 +298,7 @@ library LibStaking {
      * TOCHECK: what if reward and stake tokens are equal?
      * TOCHECK: `whenNotPaused` modifier not used?
      * TOCHECK: considering `LibUbiquityPool`, can LUSD,UBQ,UUSD be used as collateral or staked tokens?
+     * TOCHECK: is reentrancy of reward/stake token transfer possible, see: https://solodit.cyfrin.io/issues/m-17-convexmasterchefs-deposit-and-withdraw-can-be-reentered-drawing-all-reward-funds-from-the-contract-if-reward-token-allows-for-transfer-flow-control-code4rena-aura-finance-aura-finance-git?
      */
     function stake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
@@ -407,6 +409,8 @@ library LibStaking {
      * @param poolIdsToUpdate Array of pool ids where to trigger update
      * TOCHECK: is triggering "mass update" affects calculations?
      * TOCHECK: what if `allocationPoints == 0`?
+     * TOCHECK: check that if pool is added or updated in the middle of the staking then calculations are correct,
+     * see example in https://solodit.cyfrin.io/issues/h-3-wrong-call-order-for-settoppoolidswithweights-resulting-in-wrong-distribution-of-rewards-sherlock-magicsea-the-native-dex-on-the-iotaevm-git
      */
     function createStakingPool(
         uint256 allocationPoints,
@@ -529,7 +533,7 @@ library LibStaking {
      * @param poolId Pool id
      * @param allocationPoints New allocation points
      * @param poolIdsToUpdate Array of pool ids where to trigger update
-     * TOCHECK: does triggering update affects calculation?
+     * TOCHECK: does triggering update affects calculation, see: https://solodit.cyfrin.io/issues/m-21-convexmasterchef-when-using-add-and-set-it-should-always-call-massupdatepools-to-update-all-pools-code4rena-aura-finance-aura-finance-git?
      * TOCHECK: what if `allocationPoints` set to 0 in the middle of staking?
      */
     function updateStakingPool(
