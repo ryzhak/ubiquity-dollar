@@ -177,6 +177,8 @@ library LibStaking {
      * @param from From block number
      * @param to To block number
      * @return Reward multiplier
+     * // TOCHECK: is calculation correct when `from <= bonusEndBlock <= to`?
+     * // TOCHECK: what if `from > to`?
      */
     function getStakingMultiplier(
         uint256 from,
@@ -294,6 +296,7 @@ library LibStaking {
      * TOCHECK: is it possible to stake/unstake/update from uninitialized pools?
      * TOCHECK: what if reward and stake tokens are equal?
      * TOCHECK: `whenNotPaused` modifier not used?
+     * TOCHECK: considering `LibUbiquityPool`, can LUSD,UBQ,UUSD be used as collateral or staked tokens?
      */
     function stake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
@@ -402,6 +405,8 @@ library LibStaking {
      * @param allocationPoints Allocation points
      * @param lpToken LP token
      * @param poolIdsToUpdate Array of pool ids where to trigger update
+     * TOCHECK: is triggering "mass update" affects calculations?
+     * TOCHECK: what if `allocationPoints == 0`?
      */
     function createStakingPool(
         uint256 allocationPoints,
@@ -437,6 +442,7 @@ library LibStaking {
     /**
      * @notice Sets last block number when Governance bonus emissions end
      * @param newGovernanceBonusEndBlock Block number when Governance bonus emissions end
+     * TOCHECK: is setting `GovernanceBonusEndBlock` in the middle of staking affects calculations?
      */
     function setGovernanceBonusEndBlock(
         uint256 newGovernanceBonusEndBlock
@@ -453,6 +459,7 @@ library LibStaking {
     /**
      * @notice Sets bonus multiplier for early Governance token makers
      * @param newGovernanceBonusMultiplier New governance bonus multiplier
+     * TOCHECK: is setting `GovernanceBonusMultiplier` in the middle of staking affects calculations?
      */
     function setGovernanceBonusMultiplier(
         uint256 newGovernanceBonusMultiplier
@@ -465,6 +472,7 @@ library LibStaking {
     /**
      * @notice Sets Governance tokens reward per block
      * @param newGovernancePerBlock New amount of Governance tokens minted each block
+     * TOCHECK: is setting `GovernancePerBlock` in the middle of staking affects calculations?
      */
     function setGovernancePerBlock(uint256 newGovernancePerBlock) internal {
         require(newGovernancePerBlock > 0, "Empty rewards");
@@ -478,6 +486,7 @@ library LibStaking {
      * Governance tokens will be minted for the treasury.
      * @notice Example: if `governanceTreasuryDivider = 5` then `100 / 5 = 20%` extra minted Governance tokens for treasury
      * @param newGovernanceTreasuryDivider New governance divider param value
+     * TOCHECK: what if `GovernanceTreasuryDivider` is too big? Is precision loss great?
      */
     function setGovernanceTreasuryDivider(
         uint256 newGovernanceTreasuryDivider
@@ -494,6 +503,7 @@ library LibStaking {
     /**
      * @notice Sets staking reward token
      * @param newRewardToken New reward token address
+     * TOCHECK: what if reward token is updated in the middle of staking? Are users able to withdraw old rewards?
      */
     function setStakingRewardToken(address newRewardToken) internal {
         require(newRewardToken != address(0), "Zero address detected");
@@ -505,6 +515,7 @@ library LibStaking {
     /**
      * @notice Sets start block when staking should be active
      * @param newStartBlock Block number when staking should be active
+     * TOCHECK: what if `StakingStartBlock` updated in the middle of staking?
      */
     function setStakingStartBlock(uint256 newStartBlock) internal {
         require(newStartBlock >= block.number, "Can't start in the past");
@@ -519,6 +530,7 @@ library LibStaking {
      * @param allocationPoints New allocation points
      * @param poolIdsToUpdate Array of pool ids where to trigger update
      * TOCHECK: does triggering update affects calculation?
+     * TOCHECK: what if `allocationPoints` set to 0 in the middle of staking?
      */
     function updateStakingPool(
         uint256 poolId,
@@ -550,6 +562,7 @@ library LibStaking {
      * @notice Safe Governance token transfer function
      * @param to Receiver address
      * @param amount Amount to transfer
+     * TOCHECK: what if user is eligible for greater rewards but transfered less that the contract has, is the user solvent in the end?
      */
     function safeGovernanceTransfer(address to, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
