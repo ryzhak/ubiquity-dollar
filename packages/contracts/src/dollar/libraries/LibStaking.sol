@@ -295,12 +295,15 @@ library LibStaking {
      * @notice Stakes LP tokens to the staking contract for Governance tokens allocation
      * @param poolId Pool id
      * @param amount Amount of LP tokens to stake
-     * TOCHECK: is it possible to stake/unstake/update from uninitialized pools?
-     * TOCHECK: what if reward and stake tokens are equal?
-     * TOCHECK: `whenNotPaused` modifier not used?
-     * TOCHECK: considering `LibUbiquityPool`, can LUSD,UBQ,UUSD be used as collateral or staked tokens?
-     * TOCHECK: is reentrancy of reward/stake token transfer possible, see: https://solodit.cyfrin.io/issues/m-17-convexmasterchefs-deposit-and-withdraw-can-be-reentered-drawing-all-reward-funds-from-the-contract-if-reward-token-allows-for-transfer-flow-control-code4rena-aura-finance-aura-finance-git?
-     * TOCHECK: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20 + see https://solodit.cyfrin.io/issues/m-9-lack-of-support-for-fee-on-transfer-rebasing-and-tokens-with-balance-modifications-outside-of-transfers-sherlock-magicsea-the-native-dex-on-the-iotaevm-git
+     * CHECKED: is it possible to stake/unstake/update from uninitialized pools? => no, array out of bounds
+     * CHECKED: what if reward and stake tokens are equal? => fine
+     * TOWRITE: `whenNotPaused` modifier not used? => not used, should be used for stake/unstake methods
+     * TOWRITE: considering `LibUbiquityPool`, can LUSD,UBQ,UUSD be used as collateral or staked tokens?
+     * => `LibUbiquityPool` collateral can't be used as a staking or staking reward token, add a require statement
+     * TOWRITE: is reentrancy of reward/stake token transfer possible, see: https://solodit.cyfrin.io/issues/m-17-convexmasterchefs-deposit-and-withdraw-can-be-reentered-drawing-all-reward-funds-from-the-contract-if-reward-token-allows-for-transfer-flow-control-code4rena-aura-finance-aura-finance-git?
+     * => yes, at least reentrancy of the reward token is possible in the `unstake()` method, use `nonReentrant` modifier
+     * TOWRITE: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20
+     * => at least fee on transfer staking tokens break calculations, check that staking and reward tokens adhere to "common" standards
      */
     function stake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
@@ -361,7 +364,6 @@ library LibStaking {
     /**
      * @notice Updates reward variables of the given pool to be up-to-date
      * @param poolId Pool id
-     * TOCHECK: can we use UBQ as collateral?
      * INVARIANT: `updateStakingPool` must not revert, case could be when `from > to` in `getStakingMultiplier(from, to)`
      */
     function updateStakingPool(uint256 poolId) internal {
