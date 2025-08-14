@@ -141,7 +141,8 @@ library LibStaking {
      * @param poolId Pool id
      * @param user User address
      * @return Staking rewards amount
-     * TOCHECK: check how pending rewards work, see: https://solodit.cyfrin.io/issues/l-01-masterchef-pendingconcur-shows-increasing-reward-amounts-after-mining-period-ends-code4rena-concur-finance-concur-finance-contest-git
+     * CHECKED: check how pending rewards work, see: https://solodit.cyfrin.io/issues/l-01-masterchef-pendingconcur-shows-increasing-reward-amounts-after-mining-period-ends-code4rena-concur-finance-concur-finance-contest-git
+     * => fine, there's no ending period of the staking rewards
      */
     function getPendingStakingRewards(
         uint256 poolId,
@@ -178,8 +179,8 @@ library LibStaking {
      * @param from From block number
      * @param to To block number
      * @return Reward multiplier
-     * // TOCHECK: is calculation correct when `from <= bonusEndBlock <= to`?
-     * // TOCHECK: what if `from > to`?
+     * CHECKED: is calculation correct when `from <= bonusEndBlock <= to`? => seems yes
+     * CHECKED: what if `from > to`? => revert, will be verified in invariant
      */
     function getStakingMultiplier(
         uint256 from,
@@ -361,6 +362,7 @@ library LibStaking {
      * @notice Updates reward variables of the given pool to be up-to-date
      * @param poolId Pool id
      * TOCHECK: can we use UBQ as collateral?
+     * INVARIANT: `updateStakingPool` must not revert, case could be when `from > to` in `getStakingMultiplier(from, to)`
      */
     function updateStakingPool(uint256 poolId) internal {
         AppStorage storage store = LibAppStorage.appStorage();
