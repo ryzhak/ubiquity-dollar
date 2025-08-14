@@ -299,6 +299,7 @@ library LibStaking {
      * TOCHECK: `whenNotPaused` modifier not used?
      * TOCHECK: considering `LibUbiquityPool`, can LUSD,UBQ,UUSD be used as collateral or staked tokens?
      * TOCHECK: is reentrancy of reward/stake token transfer possible, see: https://solodit.cyfrin.io/issues/m-17-convexmasterchefs-deposit-and-withdraw-can-be-reentered-drawing-all-reward-funds-from-the-contract-if-reward-token-allows-for-transfer-flow-control-code4rena-aura-finance-aura-finance-git?
+     * TOCHECK: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20 + see https://solodit.cyfrin.io/issues/m-9-lack-of-support-for-fee-on-transfer-rebasing-and-tokens-with-balance-modifications-outside-of-transfers-sherlock-magicsea-the-native-dex-on-the-iotaevm-git
      */
     function stake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
@@ -411,6 +412,8 @@ library LibStaking {
      * TOCHECK: what if `allocationPoints == 0`?
      * TOCHECK: check that if pool is added or updated in the middle of the staking then calculations are correct,
      * see example in https://solodit.cyfrin.io/issues/h-3-wrong-call-order-for-settoppoolidswithweights-resulting-in-wrong-distribution-of-rewards-sherlock-magicsea-the-native-dex-on-the-iotaevm-git
+     * TOCHECK: check that protocol is solvent on creating/updating new pools, see: https://solodit.cyfrin.io/issues/h-01-wrong-reward-token-calculation-in-masterchef-contract-code4rena-concur-finance-concur-finance-contest-git
+     * TOCHECK: what if 2 staking pools with the same LP tokens are added, see: https://solodit.cyfrin.io/issues/m-22-duplicate-lp-token-could-lead-to-incorrect-reward-distribution-code4rena-aura-finance-aura-finance-git
      */
     function createStakingPool(
         uint256 allocationPoints,
@@ -566,7 +569,7 @@ library LibStaking {
      * @notice Safe Governance token transfer function
      * @param to Receiver address
      * @param amount Amount to transfer
-     * TOCHECK: what if user is eligible for greater rewards but transfered less that the contract has, is the user solvent in the end?
+     * TOCHECK: what if user is eligible for greater rewards but transfered less that the contract has, is the user solvent in the end, see: https://github.com/code-423n4/2022-02-concur-findings/issues/262?
      */
     function safeGovernanceTransfer(address to, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
