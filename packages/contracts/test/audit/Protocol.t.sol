@@ -28,7 +28,7 @@ contract ProtocolTest is DiamondTestSetup {
         rewardToken = new UbiquityGovernance(address(dollarManager));
 
         stakeToken = new MockERC20("STK", "STK", 18);
-        stakeToken2 = new MockERC20("STK2", "STK2", 18);
+        stakeToken2 = new MockERC20("STK2", "STK2", 6);
         rewardToken2 = new MockERC20("RWD2", "RWD2", 18);
 
         // staking setup
@@ -461,58 +461,88 @@ contract ProtocolTest is DiamondTestSetup {
         console2.log("Contract balance (RWD2):", rewardToken2.balanceOf(address(stakingFacet)));
     }
 
-    function testMy() public {
-        vm.startPrank(admin);
+    //===========
+    // Fuzzing
+    //===========
 
-        vm.stopPrank();
+    /// forge-config: default.fuzz.runs = 5120
+    function testFuzz_ShouldGetRewards_IfAmountAndBlocksPassedNotZero(
+        uint allocationPointsPool2, 
+        uint amount, 
+        uint blocksPassed
+    ) public {
+        allocationPointsPool2 = bound(allocationPointsPool2, 0, 100_000);
+        blocksPassed = bound(blocksPassed, 1, 2628000 * 50); // 50 years
+        amount = bound(amount, 1, 1e26); // change to 1e30 to get counterexample
 
-        vm.prank(user);
-        stakingFacet.stake(0, 1 ether);
+        console2.log("allocationPointsPool2:", allocationPointsPool2);
+        console2.log("amount:", amount);
+        console2.log("blocksPassed:", blocksPassed);
 
-        // 10 blocks pass
-        vm.roll(block.number + 10);
+        // mint stake tokens to users 
+        deal(address(stakeToken), user, amount);
+        deal(address(stakeToken2), user2, amount);
 
+        // admin creates 2nd staking pool
         vm.startPrank(admin);
         stakingFacet.createStakingPool(
-            300, // allocation points
-            stakeToken,
+            allocationPointsPool2, // allocation points
+            stakeToken2,
             getAvailablePoolIds() // array of pool ids to update
         );
         vm.stopPrank();
 
-        vm.prank(user2);
-        stakingFacet.stake(1, 1 ether);
+        // before staking
+        assertEq(rewardToken.balanceOf(user), 0);
+        assertEq(rewardToken.balanceOf(user2), 0);
+        assertEq(rewardToken.balanceOf(address(stakingFacet)), 0);
+        assertEq(stakeToken.balanceOf(user), amount);
+        assertEq(stakeToken.balanceOf(user2), 100 ether);
+        assertEq(stakeToken.balanceOf(address(stakingFacet)), 0);
+        assertEq(stakeToken2.balanceOf(user), 100 ether);
+        assertEq(stakeToken2.balanceOf(user2), amount);
+        assertEq(stakeToken2.balanceOf(address(stakingFacet)), 0);
 
-        // 10 blocks pass
-        vm.roll(block.number + 10);
-
-        vm.startPrank(admin);
-        stakingFacet.updateStakingPool(
-            1, // pool id
-            100, // allocation points
-            getAvailablePoolIds() // array of pool ids to update
-        );
-        vm.stopPrank();
-
-        // 10 blocks pass
-        vm.roll(block.number + 10);
-
-        stakingFacet.updateStakingPool(0);
-        stakingFacet.updateStakingPool(1);
-
-        // mint additional 20 tokens for solvency
-        rewardToken2.mint(address(stakingFacet), 20 ether);
-
-        console2.log("User balance (UBQ):", rewardToken.balanceOf(user));
-        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2));
-
+        // users stake tokens
         vm.prank(user);
-        stakingFacet.unstake(0, 1 ether);
+        stakingFacet.stake(0, amount);
         vm.prank(user2);
-        stakingFacet.unstake(1, 1 ether);
+        stakingFacet.stake(1, amount);
 
-        console2.log("User balance (UBQ) :", rewardToken.balanceOf(user)); // 17.5
-        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2)); // 12.5
+        vm.roll(block.number + blocksPassed);
+
+        // before unstaking
+        assertEq(rewardToken.balanceOf(user), 0);
+        assertEq(rewardToken.balanceOf(user2), 0);
+        assertEq(rewardToken.balanceOf(address(stakingFacet)), 0);
+        assertEq(stakeToken.balanceOf(user), 0);
+        assertEq(stakeToken.balanceOf(user2), 100 ether);
+        assertEq(stakeToken.balanceOf(address(stakingFacet)), amount);
+        assertEq(stakeToken2.balanceOf(user), 100 ether);
+        assertEq(stakeToken2.balanceOf(user2), 0);
+        assertEq(stakeToken2.balanceOf(address(stakingFacet)), amount);
+
+        console2.log("Pending rewards(user):", stakingFacet.getPendingStakingRewards(0, user));
+        console2.log("Pending rewards(user2):", stakingFacet.getPendingStakingRewards(1, user2));
+
+        // users unstake tokens
+        vm.prank(user);
+        stakingFacet.unstake(0, amount);
+        vm.prank(user2);
+        stakingFacet.unstake(1, amount);
+
+        assertGt(rewardToken.balanceOf(user), 0);
+
+        console2.log("======");
+        console2.log("User balance (UBQ) :", rewardToken.balanceOf(user));
+        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2));
+        console2.log("Contract balance (UBQ):", rewardToken.balanceOf(address(stakingFacet)));
+        console2.log("User balance (STK) :", stakeToken.balanceOf(user));
+        console2.log("User2 balance (STK):", stakeToken.balanceOf(user2));
+        console2.log("Contract balance (STK):", stakeToken.balanceOf(address(stakingFacet)));
+        console2.log("User balance (STK2) :", stakeToken2.balanceOf(user));
+        console2.log("User2 balance (STK2):", stakeToken2.balanceOf(user2));
+        console2.log("Contract balance (STK2):", stakeToken2.balanceOf(address(stakingFacet)));
     }
 
     //================

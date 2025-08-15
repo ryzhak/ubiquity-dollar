@@ -396,6 +396,9 @@ library LibStaking {
             governanceReward.div(stakingStore.governanceTreasuryDivider)
         );
         stakingStore.rewardToken.mint(address(this), governanceReward);
+        // TOWRITE: if `lpSupply > governanceReward.mul(1e12)` then `pool.accumulatedGovernancePerShare = 0`
+        // which means user gets 0 rewards on unstaking, see test `testFuzz_ShouldGetRewards_IfAmountAndBlocksPassedNotZero`.
+        // Possible solution could to increase precision from 1e12 to 1e18.
         pool.accumulatedGovernancePerShare = pool
             .accumulatedGovernancePerShare
             .add(governanceReward.mul(1e12).div(lpSupply));
