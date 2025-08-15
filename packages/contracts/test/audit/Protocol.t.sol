@@ -291,8 +291,8 @@ contract ProtocolTest is DiamondTestSetup {
 
         console2.log("User balance (STK):", stakeToken.balanceOf(user)); // 100
         console2.log("Contract balance (STK):", stakeToken.balanceOf(address(stakingFacet))); // 0
-        // TOCHECK: actual value is 20 somehow
-        console2.log("User balance (UBQ):", rewardToken.balanceOf(user)); // 10
+        // CHECKED: actual value is 20 somehow => expected since `setStakingStartBlock` works only for newly created pools
+        console2.log("User balance (UBQ):", rewardToken.balanceOf(user)); // 20
         console2.log("Contract balance (UBQ):", rewardToken.balanceOf(address(stakingFacet))); // 0
     }
 
