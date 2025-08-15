@@ -516,7 +516,11 @@ library LibStaking {
     /**
      * @notice Sets staking reward token
      * @param newRewardToken New reward token address
-     * TOCHECK: what if reward token is updated in the middle of staking? Are users able to withdraw old rewards?
+     * TOWRITE: what if reward token is updated in the middle of staking? Are users able to withdraw old rewards?
+     * => No, unstaking reverts because of `transfer amount exceeds balance`, see `testSetStakingRewardToken_ShouldNotAffectCalculations` test.
+     * When reward token is updated then calculation for the old reward token is saved meaning that there're no
+     * enough funds for unstaking + the old reward tokens are stuck in the contract.
+     * Admin will have to mint additional new reward tokens in order to make the pool solvent.
      */
     function setStakingRewardToken(address newRewardToken) internal {
         require(newRewardToken != address(0), "Zero address detected");
@@ -574,7 +578,9 @@ library LibStaking {
      * @notice Safe Governance token transfer function
      * @param to Receiver address
      * @param amount Amount to transfer
-     * TOCHECK: what if user is eligible for greater rewards but transfered less that the contract has, is the user solvent in the end, see: https://github.com/code-423n4/2022-02-concur-findings/issues/262?
+     * CHECKED: what if user is eligible for greater rewards but transfered less that the contract has, is the user solvent in the end, see: https://github.com/code-423n4/2022-02-concur-findings/issues/262?
+     * => I can't see how is that possible
+     * INVARIANT: signle user pending rewards can't be greater than `stakingStore.rewardAmount`
      */
     function safeGovernanceTransfer(address to, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
