@@ -545,6 +545,89 @@ contract ProtocolTest is DiamondTestSetup {
         console2.log("Contract balance (STK2):", stakeToken2.balanceOf(address(stakingFacet)));
     }
 
+    /// forge-config: default.fuzz.runs = 5120
+    function testFuzz_RewardsStuckInTheContract(
+        uint allocationPointsPool2, 
+        uint amount, 
+        uint blocksPassed
+    ) public {
+        allocationPointsPool2 = bound(allocationPointsPool2, 0, 100_000);
+        blocksPassed = bound(blocksPassed, 1, 2628000 * 50); // 50 years
+        amount = bound(amount, 1, 1e26); // change to 1e30 to get counterexample
+
+        console2.log("allocationPointsPool2:", allocationPointsPool2);
+        console2.log("amount:", amount);
+        console2.log("blocksPassed:", blocksPassed);
+
+        // mint stake tokens to users 
+        deal(address(stakeToken), user, amount);
+        deal(address(stakeToken2), user2, amount);
+
+        // admin creates 2nd staking pool
+        vm.startPrank(admin);
+        stakingFacet.createStakingPool(
+            allocationPointsPool2, // allocation points
+            stakeToken2,
+            getAvailablePoolIds() // array of pool ids to update
+        );
+        vm.stopPrank();
+
+        // before staking
+        assertEq(rewardToken.balanceOf(user), 0);
+        assertEq(rewardToken.balanceOf(user2), 0);
+        assertEq(rewardToken.balanceOf(address(stakingFacet)), 0);
+        assertEq(stakeToken.balanceOf(user), amount);
+        assertEq(stakeToken.balanceOf(user2), 100 ether);
+        assertEq(stakeToken.balanceOf(address(stakingFacet)), 0);
+        assertEq(stakeToken2.balanceOf(user), 100 ether);
+        assertEq(stakeToken2.balanceOf(user2), amount);
+        assertEq(stakeToken2.balanceOf(address(stakingFacet)), 0);
+
+        // users stake tokens
+        vm.prank(user);
+        stakingFacet.stake(0, amount);
+        vm.prank(user2);
+        stakingFacet.stake(1, amount);
+
+        vm.roll(block.number + blocksPassed);
+
+        // before unstaking
+        assertEq(rewardToken.balanceOf(user), 0);
+        assertEq(rewardToken.balanceOf(user2), 0);
+        assertEq(rewardToken.balanceOf(address(stakingFacet)), 0);
+        assertEq(stakeToken.balanceOf(user), 0);
+        assertEq(stakeToken.balanceOf(user2), 100 ether);
+        assertEq(stakeToken.balanceOf(address(stakingFacet)), amount);
+        assertEq(stakeToken2.balanceOf(user), 100 ether);
+        assertEq(stakeToken2.balanceOf(user2), 0);
+        assertEq(stakeToken2.balanceOf(address(stakingFacet)), amount);
+
+        // users unstake tokens
+        vm.prank(user);
+        stakingFacet.unstake(0, amount);
+        vm.prank(user2);
+        stakingFacet.unstake(1, amount);
+
+        LibStaking.PoolInfo memory poolInfo = stakingFacet.getStakingPoolInfo(0);
+        LibStaking.PoolInfo memory poolInfo2 = stakingFacet.getStakingPoolInfo(1);
+        (,,,uint governancePerBlock,uint governanceTreasuryDivider,,uint totalAllocationPoints,) = stakingFacet.getStakingSettings();
+        
+        uint expectedRewardUser = blocksPassed * governancePerBlock * poolInfo.allocationPoints / totalAllocationPoints;
+        uint expectedRewardUser2 = blocksPassed * governancePerBlock * poolInfo2.allocationPoints / totalAllocationPoints;
+        uint expectedRewardTreasury = blocksPassed * governancePerBlock / governanceTreasuryDivider;
+
+        assertApproxEqAbsDecimal(rewardToken.balanceOf(user), expectedRewardUser, 1e14, 18);
+        assertApproxEqAbsDecimal(rewardToken.balanceOf(user2), expectedRewardUser2, 1e14, 18);
+        assertApproxEqAbsDecimal(rewardToken.balanceOf(address(stakingFacet)), 0, 1e15, 18); // change to 1e14 to get counterexample
+        assertApproxEqAbsDecimal(rewardToken.balanceOf(admin), expectedRewardTreasury, 1e14, 18);
+        assertEq(stakeToken.balanceOf(user), amount);
+        assertEq(stakeToken.balanceOf(user2), 100 ether);
+        assertEq(stakeToken.balanceOf(address(stakingFacet)), 0);
+        assertEq(stakeToken2.balanceOf(user), 100 ether);
+        assertEq(stakeToken2.balanceOf(user2), amount);
+        assertEq(stakeToken2.balanceOf(address(stakingFacet)), 0);
+    }
+
     //================
     // Test helpers
     //================

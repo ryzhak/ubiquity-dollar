@@ -337,6 +337,8 @@ library LibStaking {
      * @notice Unstakes LP tokens from the staking contract
      * @param poolId Pool id
      * @param amount Amount of LP tokens to unstake
+     * TOWRITE: UBQ rewards are stuck in the contract after unstake due to precision loss and there's no way 
+     * for admin to get them, see test `testFuzz_RewardsStuckInTheContract`
      */
     function unstake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
