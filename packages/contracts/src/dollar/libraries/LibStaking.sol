@@ -415,11 +415,11 @@ library LibStaking {
      * @param allocationPoints Allocation points
      * @param lpToken LP token
      * @param poolIdsToUpdate Array of pool ids where to trigger update
-     * TOWRITE: is triggering "mass update" affects calculations? => yes, "mass update" must be called, see test `testCreateStakingPool_AffectsCalculations_IfMassUpdateIsNotCalled`
+     * TOWRITE: is triggering "mass update" affects calculations? => yes, "mass update" must be called on creating and updating staking pool, see test `testCreateStakingPool_AffectsCalculations_IfMassUpdateIsNotCalled`
      * CHECKED: what if `allocationPoints == 0`? => ok
-     * TOCHECK: check that if pool is added or updated in the middle of the staking then calculations are correct,
-     * see example in https://solodit.cyfrin.io/issues/h-3-wrong-call-order-for-settoppoolidswithweights-resulting-in-wrong-distribution-of-rewards-sherlock-magicsea-the-native-dex-on-the-iotaevm-git
-     * TOCHECK: check that protocol is solvent on creating/updating new pools, see: https://solodit.cyfrin.io/issues/h-01-wrong-reward-token-calculation-in-masterchef-contract-code4rena-concur-finance-concur-finance-contest-git
+     * CHECKED: check that if pool is added or updated in the middle of the staking then calculations are correct,
+     * see example in https://solodit.cyfrin.io/issues/h-3-wrong-call-order-for-settoppoolidswithweights-resulting-in-wrong-distribution-of-rewards-sherlock-magicsea-the-native-dex-on-the-iotaevm-git => ok
+     * CHECKED: check that protocol is solvent on creating/updating new pools, see: https://solodit.cyfrin.io/issues/h-01-wrong-reward-token-calculation-in-masterchef-contract-code4rena-concur-finance-concur-finance-contest-git => mass update must be called, already mentioned
      * CHECKED: what if 2 staking pools with the same LP tokens are added, see: https://solodit.cyfrin.io/issues/m-22-duplicate-lp-token-could-lead-to-incorrect-reward-distribution-code4rena-aura-finance-aura-finance-git => ok
      */
     function createStakingPool(
@@ -456,7 +456,7 @@ library LibStaking {
     /**
      * @notice Sets last block number when Governance bonus emissions end
      * @param newGovernanceBonusEndBlock Block number when Governance bonus emissions end
-     * TOCHECK: is setting `GovernanceBonusEndBlock` in the middle of staking affects calculations?
+     * CHECKED: is setting `GovernanceBonusEndBlock` in the middle of staking affects calculations? => ok
      */
     function setGovernanceBonusEndBlock(
         uint256 newGovernanceBonusEndBlock
@@ -473,7 +473,7 @@ library LibStaking {
     /**
      * @notice Sets bonus multiplier for early Governance token makers
      * @param newGovernanceBonusMultiplier New governance bonus multiplier
-     * TOCHECK: is setting `GovernanceBonusMultiplier` in the middle of staking affects calculations?
+     * CHECKED: is setting `GovernanceBonusMultiplier` in the middle of staking affects calculations? => ok
      */
     function setGovernanceBonusMultiplier(
         uint256 newGovernanceBonusMultiplier
@@ -486,7 +486,7 @@ library LibStaking {
     /**
      * @notice Sets Governance tokens reward per block
      * @param newGovernancePerBlock New amount of Governance tokens minted each block
-     * TOCHECK: is setting `GovernancePerBlock` in the middle of staking affects calculations?
+     * CHECKED: is setting `GovernancePerBlock` in the middle of staking affects calculations? => no
      */
     function setGovernancePerBlock(uint256 newGovernancePerBlock) internal {
         require(newGovernancePerBlock > 0, "Empty rewards");
@@ -500,7 +500,6 @@ library LibStaking {
      * Governance tokens will be minted for the treasury.
      * @notice Example: if `governanceTreasuryDivider = 5` then `100 / 5 = 20%` extra minted Governance tokens for treasury
      * @param newGovernanceTreasuryDivider New governance divider param value
-     * TOCHECK: what if `GovernanceTreasuryDivider` is too big? Is precision loss great?
      */
     function setGovernanceTreasuryDivider(
         uint256 newGovernanceTreasuryDivider
@@ -529,7 +528,7 @@ library LibStaking {
     /**
      * @notice Sets start block when staking should be active
      * @param newStartBlock Block number when staking should be active
-     * TOCHECK: what if `StakingStartBlock` updated in the middle of staking?
+     * CHECKED: what if `StakingStartBlock` updated in the middle of staking? => ok
      */
     function setStakingStartBlock(uint256 newStartBlock) internal {
         require(newStartBlock >= block.number, "Can't start in the past");
@@ -543,8 +542,7 @@ library LibStaking {
      * @param poolId Pool id
      * @param allocationPoints New allocation points
      * @param poolIdsToUpdate Array of pool ids where to trigger update
-     * TOCHECK: does triggering update affects calculation, see: https://solodit.cyfrin.io/issues/m-21-convexmasterchef-when-using-add-and-set-it-should-always-call-massupdatepools-to-update-all-pools-code4rena-aura-finance-aura-finance-git?
-     * TOCHECK: what if `allocationPoints` set to 0 in the middle of staking?
+     * CHECKED: what if `allocationPoints` set to 0 in the middle of staking? => ok
      */
     function updateStakingPool(
         uint256 poolId,
