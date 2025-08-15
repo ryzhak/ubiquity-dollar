@@ -361,6 +361,39 @@ contract ProtocolTest is DiamondTestSetup {
         console2.log("user2 rewardDebt:", userInfo2.rewardDebt);
     }
 
+    function testCreateStakingPool_AffectsCalculations_IfMassUpdateIsNotCalled() public {
+        vm.prank(user);
+        stakingFacet.stake(0, 1 ether);
+
+        // 10 blocks pass
+        vm.roll(block.number + 10);
+
+        vm.startPrank(admin);
+        stakingFacet.createStakingPool(
+            300, // allocation points
+            stakeToken,
+            getEmptyPoolIds() // array of pool ids to update
+        );
+        vm.stopPrank();
+
+        vm.prank(user2);
+        stakingFacet.stake(1, 1 ether);
+
+        // 10 blocks pass
+        vm.roll(block.number + 10);
+
+        console2.log("User balance (UBQ):", rewardToken.balanceOf(user)); // 0
+        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2)); // 0
+
+        vm.prank(user);
+        stakingFacet.unstake(0, 1 ether);
+        vm.prank(user2);
+        stakingFacet.unstake(1, 1 ether);
+
+        console2.log("User balance (UBQ) :", rewardToken.balanceOf(user)); // expected: 12.5, got `20.0 / 4 = 5.0`
+        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2)); // 7.5
+    }
+
     //================
     // Test helpers
     //================
@@ -374,6 +407,14 @@ contract ProtocolTest is DiamondTestSetup {
         for (uint256 i = 0; i < poolsLength; ++i) {
             availablePoolIds[i] = i;
         }
+        return availablePoolIds;
+    }
+
+    /**
+     * Returns array with empty pool ids
+     */
+    function getEmptyPoolIds() public view returns (uint256[] memory) {
+        uint256[] memory availablePoolIds = new uint256[](0);
         return availablePoolIds;
     }
 }

@@ -387,7 +387,10 @@ library LibStaking {
             .mul(stakingStore.governancePerBlock)
             .mul(pool.allocationPoints)
             .div(stakingStore.totalAllocationPoints);
-        // TOCHECK: is it possible to grief treasury on frequent pool updates?
+        // TOWRITE: is it possible to grief treasury on frequent pool updates?
+        // => yes, if `governancePerBlock = 0.0000000001 ether` and `treasuryDivider is 1000000000` then
+        // user is able to claim rewards each block while treasury won't accrue rewards
+        // TOWRITE: `governanceTreasuryDivider` can't be set to 0
         stakingStore.rewardToken.mint(
             store.treasuryAddress,
             governanceReward.div(stakingStore.governanceTreasuryDivider)
@@ -412,12 +415,12 @@ library LibStaking {
      * @param allocationPoints Allocation points
      * @param lpToken LP token
      * @param poolIdsToUpdate Array of pool ids where to trigger update
-     * TOCHECK: is triggering "mass update" affects calculations?
-     * TOCHECK: what if `allocationPoints == 0`?
+     * TOWRITE: is triggering "mass update" affects calculations? => yes, "mass update" must be called, see test `testCreateStakingPool_AffectsCalculations_IfMassUpdateIsNotCalled`
+     * CHECKED: what if `allocationPoints == 0`? => ok
      * TOCHECK: check that if pool is added or updated in the middle of the staking then calculations are correct,
      * see example in https://solodit.cyfrin.io/issues/h-3-wrong-call-order-for-settoppoolidswithweights-resulting-in-wrong-distribution-of-rewards-sherlock-magicsea-the-native-dex-on-the-iotaevm-git
      * TOCHECK: check that protocol is solvent on creating/updating new pools, see: https://solodit.cyfrin.io/issues/h-01-wrong-reward-token-calculation-in-masterchef-contract-code4rena-concur-finance-concur-finance-contest-git
-     * TOCHECK: what if 2 staking pools with the same LP tokens are added, see: https://solodit.cyfrin.io/issues/m-22-duplicate-lp-token-could-lead-to-incorrect-reward-distribution-code4rena-aura-finance-aura-finance-git
+     * CHECKED: what if 2 staking pools with the same LP tokens are added, see: https://solodit.cyfrin.io/issues/m-22-duplicate-lp-token-could-lead-to-incorrect-reward-distribution-code4rena-aura-finance-aura-finance-git => ok
      */
     function createStakingPool(
         uint256 allocationPoints,
