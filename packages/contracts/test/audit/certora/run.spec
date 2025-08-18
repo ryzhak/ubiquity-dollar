@@ -27,9 +27,34 @@ rule high_accumulatedGovernancePerShareMonotonic(method f) filtered { f -> !f.is
         "accumulatedGovernancePerShare must only increase";
 }
 
-//========
-// Unit
-//========
+//=====================
+// Unit (restricted)
+//=====================
+
+// `setGovernanceBonusEndBlock` updates storage as expected
+rule unit_setGovernanceBonusEndBlock_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 newGovernanceBonusEndBlock;
+    uint256 updatedGovernanceBonusEndBlock;
+
+    setGovernanceBonusEndBlock(e, newGovernanceBonusEndBlock);
+
+    (_, updatedGovernanceBonusEndBlock, _, _, _, _, _, _) = getStakingSettings(e);
+
+    assert updatedGovernanceBonusEndBlock == newGovernanceBonusEndBlock, "Storage must be updated as expected";
+}
+
+// `setGovernanceBonusEndBlock` must not revert unexpectedly
+rule unit_setGovernanceBonusEndBlock_MustNotRevertUnexpectedly() {
+    env e;
+    uint256 newGovernanceBonusEndBlock;
+
+    setGovernanceBonusEndBlock@withrevert(e, newGovernanceBonusEndBlock);
+
+    assert 
+        lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || newGovernanceBonusEndBlock < e.block.number),
+        "Method reverts unexpectedly";
+}
 
 // `setGovernanceBonusMultiplier()` updates storage as expected
 rule unit_setGovernanceBonusMultiplier_MustUpdateStorageAsExpected() {
@@ -45,11 +70,11 @@ rule unit_setGovernanceBonusMultiplier_MustUpdateStorageAsExpected() {
 }
 
 // `setGovernanceBonusMultiplier()` must not revert unexpectedly
-rule unit_setGovernanceBonusMultiplier_MustNotRevert() {
+rule unit_setGovernanceBonusMultiplier_MustNotRevertUnexpectedly() {
     env e;
     uint256 newGovernanceBonusMultiplier;
-    
+
     setGovernanceBonusMultiplier@withrevert(e, newGovernanceBonusMultiplier);
 
-    assert !lastReverted => hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender), "Method reverts unexpectedly";
+    assert lastReverted => !hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender), "Method reverts unexpectedly";
 }
