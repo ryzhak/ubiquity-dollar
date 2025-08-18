@@ -366,7 +366,6 @@ library LibStaking {
     /**
      * @notice Updates reward variables of the given pool to be up-to-date
      * @param poolId Pool id
-     * INVARIANT: `updateStakingPool` must not revert, case could be when `from > to` in `getStakingMultiplier(from, to)`
      */
     function updateStakingPool(uint256 poolId) internal {
         AppStorage storage store = LibAppStorage.appStorage();
@@ -585,7 +584,6 @@ library LibStaking {
      * @param amount Amount to transfer
      * CHECKED: what if user is eligible for greater rewards but transfered less that the contract has, is the user solvent in the end, see: https://github.com/code-423n4/2022-02-concur-findings/issues/262?
      * => I can't see how is that possible
-     * INVARIANT: signle user pending rewards can't be greater than `stakingStore.rewardAmount`
      */
     function safeGovernanceTransfer(address to, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
