@@ -78,3 +78,103 @@ rule unit_setGovernanceBonusMultiplier_MustNotRevertUnexpectedly() {
 
     assert lastReverted => !hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender), "Method reverts unexpectedly";
 }
+
+// `setGovernancePerBlock` updates storage as expected
+rule unit_setSetGovernancePerBlock_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 newGovernancePerBlock;
+    uint256 updatedGovernancePerBlock;
+
+    setGovernancePerBlock(e, newGovernancePerBlock);
+
+    (_, _, _, updatedGovernancePerBlock, _, _, _, _) = getStakingSettings(e);
+
+    assert updatedGovernancePerBlock == newGovernancePerBlock, "Storage must be updated as expected";
+}
+
+// `setGovernancePerBlock` must not revert unexpectedly
+rule unit_setGovernancePerBlock_MustNotRevertUnexpectedly() {
+    env e;
+    uint256 newGovernancePerBlock;
+
+    setGovernancePerBlock@withrevert(e, newGovernancePerBlock);
+
+    assert 
+        lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || newGovernancePerBlock == 0),
+        "Method reverts unexpectedly";
+}
+
+// `setGovernanceTreasuryDivider` updates storage as expected
+rule unit_setGovernanceTreasuryDivider_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 newGovernanceTreasuryDivider;
+    uint256 updatedGovernanceTreasuryDivider;
+
+    setGovernanceTreasuryDivider(e, newGovernanceTreasuryDivider);
+
+    (_, _, _, _, updatedGovernanceTreasuryDivider, _, _, _) = getStakingSettings(e);
+
+    assert updatedGovernanceTreasuryDivider == newGovernanceTreasuryDivider, "Storage must be updated as expected";
+}
+
+// `setGovernanceTreasuryDivider` must not revert unexpectedly
+rule unit_setGovernanceTreasuryDivider_MustNotRevertUnexpectedly() {
+    env e;
+    uint256 newGovernanceTreasuryDivider;
+
+    setGovernanceTreasuryDivider@withrevert(e, newGovernanceTreasuryDivider);
+
+    assert 
+        lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || newGovernanceTreasuryDivider == 0),
+        "Method reverts unexpectedly";
+}
+
+// `setStakingRewardToken` updates storage as expected
+rule unit_setStakingRewardToken_MustUpdateStorageAsExpected() {
+    env e;
+    address newStakingRewardToken;
+    address updatedStakingRewardToken;
+
+    setStakingRewardToken(e, newStakingRewardToken);
+
+    (updatedStakingRewardToken, _, _, _, _, _, _, _) = getStakingSettings(e);
+
+    assert updatedStakingRewardToken == newStakingRewardToken, "Storage must be updated as expected";
+}
+
+// `setStakingRewardToken` must not revert unexpectedly
+rule unit_setStakingRewardToken_MustNotRevertUnexpectedly() {
+    env e;
+    address newStakingRewardToken;
+
+    setStakingRewardToken@withrevert(e, newStakingRewardToken);
+
+    assert 
+        lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || newStakingRewardToken == 0),
+        "Method reverts unexpectedly";
+}
+
+// `setStakingStartBlock` updates storage as expected
+rule unit_setStakingStartBlock_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 newStakingStartBlock;
+    uint256 updatedStakingStartBlock;
+
+    setStakingStartBlock(e, newStakingStartBlock);
+
+    (_, _, _, _, _, _, _, updatedStakingStartBlock) = getStakingSettings(e);
+
+    assert updatedStakingStartBlock == newStakingStartBlock, "Storage must be updated as expected";
+}
+
+// `setStakingStartBlock` must not revert unexpectedly
+rule unit_setStakingStartBlock_MustNotRevertUnexpectedly() {
+    env e;
+    uint256 newStakingStartBlock;
+
+    setStakingStartBlock@withrevert(e, newStakingStartBlock);
+
+    assert 
+        lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || newStakingStartBlock < e.block.number),
+        "Method reverts unexpectedly";
+}
