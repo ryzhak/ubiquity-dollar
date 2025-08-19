@@ -31,6 +31,74 @@ rule high_accumulatedGovernancePerShareMonotonic(method f) filtered { f -> !f.is
 // Unit (restricted)
 //=====================
 
+// `createStakingPool` updates storage as expected
+rule unit_createStakingPool_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 allocationPoints;
+    address lpToken;
+    uint256[] poolIdsToUpdate;
+    uint256 totalAllocationPointsBefore;
+    uint256 totalAllocationPointsAfter;
+
+    // 1 pool already exists
+    require(getStakingPoolsLength(e) == 1);
+
+    (_, _, _, _, _, _, totalAllocationPointsBefore, _) = getStakingSettings(e);
+
+    createStakingPool(e, allocationPoints, lpToken, poolIdsToUpdate);
+
+    (_, _, _, _, _, _, totalAllocationPointsAfter, _) = getStakingSettings(e);
+    LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, 1);
+
+    assert totalAllocationPointsAfter == totalAllocationPointsBefore + allocationPoints, "Allocation points inconsistency";
+    assert poolInfo.lpToken == lpToken, "Pool token mismatch";
+    assert poolInfo.amount == 0, "Pool amount must be 0";
+    assert poolInfo.allocationPoints == allocationPoints, "Pool's allocation points mismatch";
+    assert poolInfo.accumulatedGovernancePerShare == 0, "Accumulated governance per share must be 0";
+}
+
+// `createStakingPool` must not revert unexpectedly
+rule unit_createStakingPool_MustNotRevertUnexpectedly() {
+    env e;
+    uint256 allocationPoints;
+    address lpToken;
+    uint256[] poolIdsToUpdate;
+    uint256 totalAllocationPoints;
+
+    // don't update any pools
+    require poolIdsToUpdate.length == 0;
+    // prevent overflow
+    (_, _, _, _, _, _, totalAllocationPoints, _) = getStakingSettings(e);
+    require(totalAllocationPoints + allocationPoints < max_uint256);
+
+    createStakingPool@withrevert(e, allocationPoints, lpToken, poolIdsToUpdate);
+
+    assert 
+        lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || lpToken == 0),
+        "Method reverts unexpectedly";
+}
+
+// `createStakingPool` does not affect other pools
+rule unit_createStakingPool_DoesNotAffectOtherPools() {
+    env e;
+    uint256 allocationPoints;
+    address lpToken;
+    uint256[] poolIdsToUpdate;
+
+    // 1 pool already exists
+    require(getStakingPoolsLength(e) == 1);
+    // don't update other pools
+    require(poolIdsToUpdate.length == 0);
+
+    LibStaking.PoolInfo otherPoolInfoBefore = getStakingPoolInfo(e, 0);
+
+    createStakingPool(e, allocationPoints, lpToken, poolIdsToUpdate);
+
+    LibStaking.PoolInfo otherPoolInfoAfter = getStakingPoolInfo(e, 0);
+
+    assert otherPoolInfoBefore == otherPoolInfoAfter, "Other pool must not be affected";
+}
+
 // `setGovernanceBonusEndBlock` updates storage as expected
 rule unit_setGovernanceBonusEndBlock_MustUpdateStorageAsExpected() {
     env e;
