@@ -6,14 +6,89 @@ methods {
     function _.transferFrom(address, address, uint256) external => DISPATCHER(true);
 }
 
+// default role admin
 definition DEFAULT_ADMIN_ROLE() returns bytes32 = to_bytes32(0);
+// filters methods only from `StakingFacet`
+definition isStakingFacetMethod (method f) returns bool = 
+    // exlude diamond fallback
+    !f.isFallback && (
+        // views
+        f.selector == sig:getPendingStakingRewards(uint256,address).selector ||
+        f.selector == sig:getStakingMultiplier(uint256,uint256).selector ||
+        f.selector == sig:getStakingSettings().selector ||
+        f.selector == sig:getStakingUserInfo(uint256,address).selector ||
+        f.selector == sig:getStakingPoolInfo(uint256).selector ||
+        f.selector == sig:getStakingPoolsLength().selector ||
+        // public
+        f.selector == sig:massUpdateStakingPools(uint256[]).selector ||
+        f.selector == sig:unstake(uint256,uint256).selector ||
+        f.selector == sig:stake(uint256,uint256).selector ||
+        f.selector == sig:updateStakingPool(uint256).selector ||
+        // restricted
+        f.selector == sig:createStakingPool(uint256,address,uint256[]).selector ||
+        f.selector == sig:setGovernanceBonusEndBlock(uint256).selector ||
+        f.selector == sig:setGovernanceBonusMultiplier(uint256).selector ||
+        f.selector == sig:setGovernancePerBlock(uint256).selector ||
+        f.selector == sig:setGovernanceTreasuryDivider(uint256).selector ||
+        f.selector == sig:setStakingRewardToken(address).selector ||
+        f.selector == sig:setStakingStartBlock(uint256).selector ||
+        f.selector == sig:updateStakingPool(uint256,uint256,uint256[]).selector
+    );
 
 //========
 // High
 //========
 
+// sum of all `pool.allocationPoints` equals to `stakingStore.totalAllocationPoints`
+rule high_allocationPointsIntegrity(method f) filtered { f -> isStakingFacetMethod(f) } {
+    env e;
+
+    uint256 allocationPointsPool1;
+    uint256 allocationPointsPool2;
+    address lpToken;
+    uint256[] poolIdsToUpdate;
+    uint256 totalAllocationPointsBefore;
+    uint256 totalAllocationPointsAfter;
+
+    // no pools exist
+    require(getStakingPoolsLength(e) == 0);
+
+    // create 1st staking pool
+    createStakingPool(e, allocationPointsPool1, lpToken, poolIdsToUpdate);
+    // create 2nd staking pool
+    createStakingPool(e, allocationPointsPool2, lpToken, poolIdsToUpdate);
+
+    (_, _, _, _, _, _, totalAllocationPointsBefore, _) = getStakingSettings(e);
+
+    // no pools exist, `totalAllocationPointsBefore == 0`
+    require totalAllocationPointsBefore == 0;
+
+    // call arbitrary method
+    calldataarg args;
+    f(e, args);
+
+    (_, _, _, _, _, _, totalAllocationPointsAfter, _) = getStakingSettings(e);
+
+    if (f.selector == sig:createStakingPool(uint256,address,uint256[]).selector) {
+        LibStaking.PoolInfo poolInfo3 = getStakingPoolInfo(e, 2);
+        assert 
+            totalAllocationPointsAfter == allocationPointsPool1 + allocationPointsPool2 + poolInfo3.allocationPoints, 
+            "Allocation points integrity when new pool was created";
+    } else if (f.selector == sig:updateStakingPool(uint256,uint256,uint256[]).selector) {
+        LibStaking.PoolInfo poolInfo1 = getStakingPoolInfo(e, 0);
+        LibStaking.PoolInfo poolInfo2 = getStakingPoolInfo(e, 1);
+        assert
+            totalAllocationPointsAfter == poolInfo1.allocationPoints + poolInfo2.allocationPoints, 
+            "Allocation points integrity when pool was updated";
+    } else {
+        assert 
+            totalAllocationPointsAfter == allocationPointsPool1 + allocationPointsPool2, 
+            "Allocation points integrity";
+    }
+}
+
 // `pool.accumulatedGovernancePerShare` only increases
-rule high_accumulatedGovernancePerShareMonotonic(method f) filtered { f -> !f.isFallback } {
+rule high_accumulatedGovernancePerShareMonotonic(method f) filtered { f -> isStakingFacetMethod(f) } {
     uint256 poolId;    
     env e;
 
