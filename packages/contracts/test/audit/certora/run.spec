@@ -246,3 +246,73 @@ rule unit_setStakingStartBlock_MustNotRevertUnexpectedly() {
         lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || newStakingStartBlock < e.block.number),
         "Method reverts unexpectedly";
 }
+
+// `updateStakingPool` updates storage as expected
+rule unit_updateStakingPool_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 poolId;
+    uint256 allocationPoints;
+    uint256[] poolIdsToUpdate;
+    uint256 totalAllocationPointsBefore;
+    uint256 totalAllocationPointsAfter;
+
+    // at least 2 pools exist
+    require(poolId > 1);
+    require(getStakingPoolsLength(e) == poolId + 1);
+
+    (_, _, _, _, _, _, totalAllocationPointsBefore, _) = getStakingSettings(e);
+    LibStaking.PoolInfo poolInfoBefore = getStakingPoolInfo(e, poolId);
+
+    updateStakingPool(e, poolId, allocationPoints, poolIdsToUpdate);
+
+    (_, _, _, _, _, _, totalAllocationPointsAfter, _) = getStakingSettings(e);
+    LibStaking.PoolInfo poolInfoAfter = getStakingPoolInfo(e, poolId);
+
+    assert totalAllocationPointsAfter == totalAllocationPointsBefore - poolInfoBefore.allocationPoints + allocationPoints, "Allocation points inconsistency";
+    assert poolInfoAfter.allocationPoints == allocationPoints, "Pool's allocation points mismatch";
+}
+
+// `updateStakingPool` must not revert unexpectedly
+rule unit_updateStakingPool_MustNotRevertUnexpectedly() {
+    env e;
+    uint256 poolId;
+    uint256 allocationPoints;
+    uint256[] poolIdsToUpdate;
+    uint256 totalAllocationPoints;
+
+    // don't update any pools
+    require poolIdsToUpdate.length == 0;
+    // prevent overflow
+    (_, _, _, _, _, _, totalAllocationPoints, _) = getStakingSettings(e);
+    LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, poolId);
+    require(totalAllocationPoints >= poolInfo.allocationPoints);
+    require(totalAllocationPoints - poolInfo.allocationPoints + allocationPoints < max_uint256);
+
+    updateStakingPool@withrevert(e, poolId, allocationPoints, poolIdsToUpdate);
+
+    assert 
+        lastReverted => (!hasRole(e, DEFAULT_ADMIN_ROLE(), e.msg.sender) || poolId >= getStakingPoolsLength(e)),
+        "Method reverts unexpectedly";
+}
+
+// `updateStakingPool` does not affect other pools
+rule unit_updateStakingPool_DoesNotAffectOtherPools() {
+    env e;
+    uint256 poolId;
+    uint256 allocationPoints;
+    uint256[] poolIdsToUpdate;
+
+    // at least 2 pools exist
+    require(poolId > 1);
+    require(getStakingPoolsLength(e) == poolId + 1);
+    // don't update any pools
+    require poolIdsToUpdate.length == 0;
+
+    LibStaking.PoolInfo otherPoolInfoBefore = getStakingPoolInfo(e, 0);
+
+    updateStakingPool(e, poolId, allocationPoints, poolIdsToUpdate);
+
+    LibStaking.PoolInfo otherPoolInfoAfter = getStakingPoolInfo(e, 0);
+
+    assert otherPoolInfoBefore == otherPoolInfoAfter, "Other pool must not be affected";
+}
