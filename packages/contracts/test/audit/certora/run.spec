@@ -1,3 +1,5 @@
+using UbiquityGovernance as ubqToken;
+
 methods {
     function _.mint(address, uint256) external => DISPATCHER(true);
     function _.transfer(address, uint256) external => DISPATCHER(true);
@@ -25,6 +27,109 @@ rule high_accumulatedGovernancePerShareMonotonic(method f) filtered { f -> !f.is
     assert 
         poolInfoAfter.accumulatedGovernancePerShare >= poolInfoBefore.accumulatedGovernancePerShare,
         "accumulatedGovernancePerShare must only increase";
+}
+
+//=================
+// Unit (public)
+//=================
+
+// `updateStakingPool` does not update a pool if:
+// 1. The pool has already been updated in the current block
+// 2. Pool's LP supply is 0
+rule unit_updateStakingPoolRewards_UpdatesPoolRewardsOnlyInExpectedCases() {
+    env e;
+    uint256 poolId;
+
+    // at least 3 pools exist
+    require(poolId > 1);
+    require(getStakingPoolsLength(e) == poolId + 1);
+
+    LibStaking.PoolInfo poolInfoBefore = getStakingPoolInfo(e, poolId);
+
+    updateStakingPool(e, poolId);
+
+    LibStaking.PoolInfo poolInfoAfter = getStakingPoolInfo(e, poolId);
+
+    assert 
+        (poolInfoBefore == poolInfoAfter) => (e.block.number <= poolInfoBefore.lastRewardBlock) || (poolInfoBefore.amount == 0),
+        "Pool rewards updated unexpectedly";
+}
+
+// // `updateStakingPool` mints rewards to diamond
+// rule unit_updateStakingPoolRewards_MintsRewardsToDiamond() {
+//     env e;
+//     uint256 poolId;
+//     address treasury;
+
+//     // at least 3 pools exist
+//     require(poolId > 1);
+//     require(getStakingPoolsLength(e) == poolId + 1);
+//     // set treasury address
+//     require(treasuryAddress(e) == treasury);
+//     // diamond is not treasury
+//     require(treasury != currentContract);
+
+//     uint256 diamondRewardsBefore = ubqToken.balanceOf(e, currentContract);
+
+//     updateStakingPool(e, poolId);
+
+//     uint256 diamondRewardsAfter = ubqToken.balanceOf(e, currentContract);
+
+//     // prevent overflow
+//     require diamondRewardsBefore + diamondRewardsAfter < max_uint256;
+
+//     assert diamondRewardsAfter >= diamondRewardsBefore, "Diamond reward balance only increases";
+// }
+
+// // `updateStakingPool` mints rewards to treasury
+// rule unit_updateStakingPoolRewards_MintsRewardsToTreasury() {
+//     env e;
+//     uint256 poolId;
+//     address treasury;
+
+//     // at least 3 pools exist
+//     require(poolId > 1);
+//     require(getStakingPoolsLength(e) == poolId + 1);
+//     // set treasury address
+//     require(treasuryAddress(e) == treasury);
+
+//     mathint treasuryRewardsBefore = ubqToken.balanceOf(e, treasury);
+
+//     updateStakingPool(e, poolId);
+
+//     mathint treasuryRewardsAfter = ubqToken.balanceOf(e, treasury);
+
+//     assert treasuryRewardsAfter >= treasuryRewardsBefore, "Treasury reward balance only increases";
+// }
+
+// `updateStakingPool` updates storage as expected
+rule unit_updateStakingPoolRewards_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 poolId;
+    mathint totalRewardAmountBefore;
+    mathint totalRewardAmountAfter;
+
+    // at least 3 pools exist
+    require(poolId > 1);
+    require(getStakingPoolsLength(e) == poolId + 1);
+
+    LibStaking.PoolInfo poolInfoBefore = getStakingPoolInfo(e, poolId);
+    (_, _, _, _, _, totalRewardAmountBefore, _, _) = getStakingSettings(e);
+
+    updateStakingPool(e, poolId);
+
+    LibStaking.PoolInfo poolInfoAfter = getStakingPoolInfo(e, poolId);
+    (_, _, _, _, _, totalRewardAmountAfter, _, _) = getStakingSettings(e);
+
+    assert 
+        poolInfoAfter.accumulatedGovernancePerShare >= poolInfoBefore.accumulatedGovernancePerShare, 
+        "Accumulated governance per share always increases";
+    assert 
+        e.block.number > poolInfoBefore.lastRewardBlock => poolInfoAfter.lastRewardBlock == e.block.number, 
+        "Pool's last reward block must be updated";
+    assert
+        totalRewardAmountAfter >= totalRewardAmountBefore,
+        "Total reward amount always increases";
 }
 
 //=====================
@@ -256,7 +361,7 @@ rule unit_updateStakingPool_MustUpdateStorageAsExpected() {
     uint256 totalAllocationPointsBefore;
     uint256 totalAllocationPointsAfter;
 
-    // at least 2 pools exist
+    // at least 3 pools exist
     require(poolId > 1);
     require(getStakingPoolsLength(e) == poolId + 1);
 
@@ -302,7 +407,7 @@ rule unit_updateStakingPool_DoesNotAffectOtherPools() {
     uint256 allocationPoints;
     uint256[] poolIdsToUpdate;
 
-    // at least 2 pools exist
+    // at least 3 pools exist
     require(poolId > 1);
     require(getStakingPoolsLength(e) == poolId + 1);
     // don't update any pools
