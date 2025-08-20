@@ -253,6 +253,149 @@ rule unit_stake_MustNotAffectOtherPools() {
     assert otherPoolInfoBefore == otherPoolInfoAfter, "Other pool not affected";
 }
 
+// `unstake` increases user rewads
+rule unit_unstake_MustIncreaseUserRewards() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+    address rewardToken;
+
+    LibStaking.UserInfo userInfo = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, poolId);
+    (rewardToken, _, _, _, _, _, _, _) = getStakingSettings(e);
+
+    // user has pending rewards
+    require userInfo.amount > 0;
+    // user has sufficient amount to withdraw
+    require amount <= userInfo.amount;
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // prevent overflow
+    require ubqToken.balanceOf(e, user) == 0;
+
+    mathint rewardBalanceBefore = ubqToken.balanceOf(e, user);
+
+    unstake(e, poolId, amount);
+
+    mathint rewardBalanceAfter = ubqToken.balanceOf(e, user);
+
+    assert rewardBalanceAfter >= rewardBalanceBefore, "User rewards only increase";
+}
+
+// `unstake` updates storage as expected
+rule unit_unstake_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+
+    LibStaking.UserInfo userInfoBefore = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfoBefore = getStakingPoolInfo(e, poolId);
+
+    unstake(e, poolId, amount);
+
+    LibStaking.UserInfo userInfoAfter = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfoAfter = getStakingPoolInfo(e, poolId);
+
+    assert userInfoBefore.amount == userInfoAfter.amount + amount, "User staked amount decreases";
+    assert poolInfoBefore.amount == poolInfoAfter.amount + amount, "Pool staked amount decreases";
+}
+
+// `unstake` transfers staked tokens
+rule unit_unstake_MustTransferStakedToken() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+
+    LibStaking.UserInfo userInfo = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, poolId);
+
+    // user has some funds staked
+    require userInfo.amount > 0;
+    // current contract is not diamond
+    require e.msg.sender != currentContract;
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // prevent overflow
+    require amount < 100000000000000000000000000; // 100mln
+    require(ubqToken.balanceOf(e, user) == 0);
+
+    mathint userBalanceBefore = ubqToken.balanceOf(e, user);
+
+    unstake(e, poolId, amount);
+
+    mathint userBalanceAfter = ubqToken.balanceOf(e, user);
+
+    assert userBalanceAfter >= userBalanceBefore + amount, "Staked tokens must be transfered";
+}
+
+// `unstake` must not affect other users
+rule unit_unstake_MustNotAffectOtherUsers() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+    address otherUser;
+
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // users are different
+    require otherUser != user;
+
+    LibStaking.UserInfo otherUserInfoBefore = getStakingUserInfo(e, poolId, otherUser);
+
+    unstake(e, poolId, amount);
+
+    LibStaking.UserInfo otherUserInfoAfter = getStakingUserInfo(e, poolId, otherUser);
+
+    assert otherUserInfoBefore == otherUserInfoAfter, "Other user not affected";
+}
+
+// `unstake` must not affect other pools
+rule unit_unstake_MustNotAffectOtherPools() {
+    env e;
+    uint256 poolId;
+    uint256 otherPoolId;
+    uint256 amount;
+    address user;
+
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // pools are different
+    require otherPoolId != poolId;
+
+    LibStaking.PoolInfo otherPoolInfoBefore = getStakingPoolInfo(e, otherPoolId);
+
+    unstake(e, poolId, amount);
+
+    LibStaking.PoolInfo otherPoolInfoAfter = getStakingPoolInfo(e, otherPoolId);
+
+    assert otherPoolInfoBefore == otherPoolInfoAfter, "Other pool not affected";
+}
+
+// `unstake` must not transfer more staked tokens than expected
+rule unit_unstake_UserMustNotBeAbleToUnstakeMoreThanExpected() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+
+    LibStaking.UserInfo userInfo = getStakingUserInfo(e, poolId, user);
+    require amount > userInfo.amount;
+
+    unstake@withrevert(e, poolId, amount);
+
+    assert lastReverted, "User can not unstake more than expected";
+}
+
 // `updateStakingPool` does not update a pool if:
 // 1. The pool has already been updated in the current block
 // 2. Pool's LP supply is 0
