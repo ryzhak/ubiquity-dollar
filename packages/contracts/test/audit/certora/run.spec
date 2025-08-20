@@ -9,8 +9,6 @@ methods {
 
 // default role admin
 definition DEFAULT_ADMIN_ROLE() returns bytes32 = to_bytes32(0);
-// UBQ minter role
-definition UBQ_MINTER_ROLE() returns bytes32 = keccak256("UBQ_MINTER_ROLE");
 // filters methods only from `StakingFacet`
 definition isStakingFacetMethod (method f) returns bool = 
     // exlude diamond fallback
@@ -131,6 +129,130 @@ rule unit_massUpdateStakingPools_MustUpdateStorageAsExpected() {
     assert afterMassUpdateStorage == afterSingleUpdateStorage, "Storage must be updated as expected";
 }
 
+// `stake` increases user rewads
+rule unit_stake_MustIncreaseUserRewards() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+    address rewardToken;
+
+    LibStaking.UserInfo userInfo = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, poolId);
+    (rewardToken, _, _, _, _, _, _, _) = getStakingSettings(e);
+
+    // user has pending rewards
+    require userInfo.amount > 0;
+    // user only wants to collect rewards
+    require amount == 0;
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // prevent overflow
+    require ubqToken.balanceOf(e, user) == 0;
+
+    mathint rewardBalanceBefore = ubqToken.balanceOf(e, user);
+
+    stake(e, poolId, amount);
+
+    mathint rewardBalanceAfter = ubqToken.balanceOf(e, user);
+
+    assert rewardBalanceAfter >= rewardBalanceBefore, "User rewards only increase";
+}
+
+// `stake` transfers staked tokens
+rule unit_stake_MustTransferStakedToken() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+
+    LibStaking.UserInfo userInfo = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, poolId);
+
+    // user has not pending rewards
+    require userInfo.amount == 0;
+    // current contract is not diamond
+    require e.msg.sender != currentContract;
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // user is not treasury
+    require(treasuryAddress(e) != user);
+
+    mathint userBalanceBefore = ubqToken.balanceOf(e, user);
+
+    stake(e, poolId, amount);
+
+    mathint userBalanceAfter = ubqToken.balanceOf(e, user);
+
+    assert userBalanceAfter + amount == userBalanceBefore, "Staked tokens must be transfered";
+}
+
+// `stake` updates storage as expected
+rule unit_stake_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+
+    LibStaking.UserInfo userInfoBefore = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfoBefore = getStakingPoolInfo(e, poolId);
+
+    stake(e, poolId, amount);
+
+    LibStaking.UserInfo userInfoAfter = getStakingUserInfo(e, poolId, user);
+    LibStaking.PoolInfo poolInfoAfter = getStakingPoolInfo(e, poolId);
+
+    assert userInfoBefore.amount + amount == userInfoAfter.amount, "User staked amount increases";
+    assert poolInfoBefore.amount + amount == poolInfoAfter.amount, "Pool staked amount increases";
+}
+
+// `stake` must not affect other users
+rule unit_stake_MustNotAffectOtherUsers() {
+    env e;
+    uint256 poolId;
+    uint256 amount;
+    address user;
+    address otherUser;
+
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // users are different
+    require otherUser != user;
+
+    LibStaking.UserInfo otherUserInfoBefore = getStakingUserInfo(e, poolId, otherUser);
+
+    stake(e, poolId, amount);
+
+    LibStaking.UserInfo otherUserInfoAfter = getStakingUserInfo(e, poolId, otherUser);
+
+    assert otherUserInfoBefore == otherUserInfoAfter, "Other user not affected";
+}
+
+// `stake` must not affect other pools
+rule unit_stake_MustNotAffectOtherPools() {
+    env e;
+    uint256 poolId;
+    uint256 otherPoolId;
+    uint256 amount;
+    address user;
+
+    // set user as `msg.sender`
+    require e.msg.sender == user;
+    // pools are different
+    require otherPoolId != poolId;
+
+    LibStaking.PoolInfo otherPoolInfoBefore = getStakingPoolInfo(e, otherPoolId);
+
+    stake(e, poolId, amount);
+
+    LibStaking.PoolInfo otherPoolInfoAfter = getStakingPoolInfo(e, otherPoolId);
+
+    assert otherPoolInfoBefore == otherPoolInfoAfter, "Other pool not affected";
+}
+
 // `updateStakingPool` does not update a pool if:
 // 1. The pool has already been updated in the current block
 // 2. Pool's LP supply is 0
@@ -240,23 +362,29 @@ rule unit_updateStakingPoolRewards_MustNotRevertUnexpectedly() {
     uint256 governanceBonusMultiplier;
     uint256 governancePerBlock;
     uint256 governanceTreasuryDivider;
+    uint256 rewardAmount;
     uint256 totalAllocationPoints;
 
-    (_, bonusEndBlock, governanceBonusMultiplier, governancePerBlock, governanceTreasuryDivider, _, totalAllocationPoints, _) = getStakingSettings(e);
+    (_, bonusEndBlock, governanceBonusMultiplier, governancePerBlock, governanceTreasuryDivider, rewardAmount, totalAllocationPoints, _) = getStakingSettings(e);
     LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, poolId);
 
+    // prevent overflows
     require e.block.number < 2628000 * 10; // block numbers in 10 years
     require governancePerBlock < 100000000000000000000000; // 100k ether
     require governanceBonusMultiplier < 100;
     require bonusEndBlock < 2628000 * 10; // block numbers in 10 years
     require poolInfo.allocationPoints < 100000;
+    require poolInfo.accumulatedGovernancePerShare == 0;
     require totalAllocationPoints > 0;
     require governanceTreasuryDivider > 0;
+    require rewardAmount == 0;
+    // prevent edge cases
     require(treasuryAddress(e) != 0);
     require !ubqToken.paused(e);
     require ubqToken.totalSupply(e) < max_uint256;
+    require ubqToken.totalSupply(e) == 0;
     require ubqToken.balanceOf(e, currentContract) < max_uint256;
-    require dollarManager.hasRole(e, UBQ_MINTER_ROLE(), currentContract);
+    require dollarManager.hasRole(e, dollarManager.UBQ_MINTER_ROLE(e), currentContract);
 
     updateStakingPool@withrevert(e, poolId);
 
