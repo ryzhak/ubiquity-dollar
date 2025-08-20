@@ -304,6 +304,7 @@ library LibStaking {
      * => yes, at least reentrancy of the reward token is possible in the `unstake()` method, use `nonReentrant` modifier
      * TOWRITE: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20
      * => at least fee on transfer staking tokens break calculations, check that staking and reward tokens adhere to "common" standards
+     * TOWRITE: if `user.rewardDebt` is too big then DOS on `sub(user.rewardDebt)`
      */
     function stake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();

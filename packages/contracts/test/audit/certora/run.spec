@@ -418,52 +418,43 @@ rule unit_updateStakingPoolRewards_UpdatesPoolRewardsOnlyInExpectedCases() {
         "Pool rewards updated unexpectedly";
 }
 
-// // `updateStakingPool` mints rewards to diamond
-// rule unit_updateStakingPoolRewards_MintsRewardsToDiamond() {
-//     env e;
-//     uint256 poolId;
-//     address treasury;
+// `updateStakingPool` mints rewards to diamond
+rule unit_updateStakingPoolRewards_MintsRewardsToDiamond() {
+    env e;
+    uint256 poolId;
+    address treasury;
 
-//     // at least 3 pools exist
-//     require(poolId > 1);
-//     require(getStakingPoolsLength(e) == poolId + 1);
-//     // set treasury address
-//     require(treasuryAddress(e) == treasury);
-//     // diamond is not treasury
-//     require(treasury != currentContract);
+    // prevent overflow
+    require(ubqToken.balanceOf(e, currentContract) == 0);
 
-//     uint256 diamondRewardsBefore = ubqToken.balanceOf(e, currentContract);
+    uint256 diamondRewardsBefore = ubqToken.balanceOf(e, currentContract);
 
-//     updateStakingPool(e, poolId);
+    updateStakingPool(e, poolId);
 
-//     uint256 diamondRewardsAfter = ubqToken.balanceOf(e, currentContract);
+    uint256 diamondRewardsAfter = ubqToken.balanceOf(e, currentContract);
 
-//     // prevent overflow
-//     require diamondRewardsBefore + diamondRewardsAfter < max_uint256;
+    assert diamondRewardsAfter >= diamondRewardsBefore, "Diamond reward balance only increases";
+}
 
-//     assert diamondRewardsAfter >= diamondRewardsBefore, "Diamond reward balance only increases";
-// }
+// `updateStakingPool` mints rewards to treasury
+rule unit_updateStakingPoolRewards_MintsRewardsToTreasury() {
+    env e;
+    uint256 poolId;
+    address treasury;
 
-// // `updateStakingPool` mints rewards to treasury
-// rule unit_updateStakingPoolRewards_MintsRewardsToTreasury() {
-//     env e;
-//     uint256 poolId;
-//     address treasury;
+    // set treasury address
+    require(treasuryAddress(e) == treasury);
+    // prevent overflow
+    require(ubqToken.balanceOf(e, treasury) == 0);
 
-//     // at least 3 pools exist
-//     require(poolId > 1);
-//     require(getStakingPoolsLength(e) == poolId + 1);
-//     // set treasury address
-//     require(treasuryAddress(e) == treasury);
+    mathint treasuryRewardsBefore = ubqToken.balanceOf(e, treasury);
 
-//     mathint treasuryRewardsBefore = ubqToken.balanceOf(e, treasury);
+    updateStakingPool(e, poolId);
 
-//     updateStakingPool(e, poolId);
+    mathint treasuryRewardsAfter = ubqToken.balanceOf(e, treasury);
 
-//     mathint treasuryRewardsAfter = ubqToken.balanceOf(e, treasury);
-
-//     assert treasuryRewardsAfter >= treasuryRewardsBefore, "Treasury reward balance only increases";
-// }
+    assert treasuryRewardsAfter >= treasuryRewardsBefore, "Treasury reward balance only increases";
+}
 
 // `updateStakingPool` updates storage as expected
 rule unit_updateStakingPoolRewards_MustUpdateStorageAsExpected() {
