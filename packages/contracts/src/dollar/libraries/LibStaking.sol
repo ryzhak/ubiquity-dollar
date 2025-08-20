@@ -392,6 +392,11 @@ library LibStaking {
         // => yes, if `governancePerBlock = 0.0000000001 ether` and `treasuryDivider is 1000000000` then
         // user is able to claim rewards each block while treasury won't accrue rewards
         // TOWRITE: `governanceTreasuryDivider` can't be set to 0
+        // TOWRITE: if `store.treasuryAddress == address(0)` then it's a DOS (https://prover.certora.com/output/8691664/a0cd9af9145e4c5a9746f22505c54800/)
+        // TOWRITE: if `stakingStore.totalAllocationPoints == 0` but a pool exists with 0 allocation points then 
+        // user is unable to unstake since `updateStakingPool()` reverts
+        // TOWRITE: when UBQ minting is paused then updated staking pool reverts
+        // TOWRITE: if `UBQ_MINTER_ROLE` is revoked from Diamond (via `dollarManager.hasRole`) then contract is DoSed
         stakingStore.rewardToken.mint(
             store.treasuryAddress,
             governanceReward.div(stakingStore.governanceTreasuryDivider)

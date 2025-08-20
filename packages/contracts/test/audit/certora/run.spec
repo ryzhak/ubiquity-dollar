@@ -1,4 +1,5 @@
 using UbiquityGovernance as ubqToken;
+using UbiquityAlgorithmicDollarManager as dollarManager;
 
 methods {
     function _.mint(address, uint256) external => DISPATCHER(true);
@@ -8,6 +9,8 @@ methods {
 
 // default role admin
 definition DEFAULT_ADMIN_ROLE() returns bytes32 = to_bytes32(0);
+// UBQ minter role
+definition UBQ_MINTER_ROLE() returns bytes32 = keccak256("UBQ_MINTER_ROLE");
 // filters methods only from `StakingFacet`
 definition isStakingFacetMethod (method f) returns bool = 
     // exlude diamond fallback
@@ -108,6 +111,26 @@ rule high_accumulatedGovernancePerShareMonotonic(method f) filtered { f -> isSta
 // Unit (public)
 //=================
 
+// `massUpdateStakingPools` for a single pool must have the same effect on storage as calling `updateStakingPool`
+rule unit_massUpdateStakingPools_MustUpdateStorageAsExpected() {
+    env e;
+    uint256 poolId;
+    uint256[] poolIdsToUpdate;
+
+    require(poolIdsToUpdate.length == 1);
+    require(poolIdsToUpdate[0] == poolId);
+
+    storage initialStorage = lastStorage;
+
+    massUpdateStakingPools(e, poolIdsToUpdate);
+    storage afterMassUpdateStorage = lastStorage;
+
+    updateStakingPool(e, poolId) at initialStorage;
+    storage afterSingleUpdateStorage = lastStorage;
+
+    assert afterMassUpdateStorage == afterSingleUpdateStorage, "Storage must be updated as expected";
+}
+
 // `updateStakingPool` does not update a pool if:
 // 1. The pool has already been updated in the current block
 // 2. Pool's LP supply is 0
@@ -205,6 +228,58 @@ rule unit_updateStakingPoolRewards_MustUpdateStorageAsExpected() {
     assert
         totalRewardAmountAfter >= totalRewardAmountBefore,
         "Total reward amount always increases";
+}
+
+// `updateStakingPool` must not revert unexpectedly
+rule unit_updateStakingPoolRewards_MustNotRevertUnexpectedly() {
+    env e;
+    uint256 poolId;
+    uint256 from;
+    uint256 to;
+    uint256 bonusEndBlock;
+    uint256 governanceBonusMultiplier;
+    uint256 governancePerBlock;
+    uint256 governanceTreasuryDivider;
+    uint256 totalAllocationPoints;
+
+    (_, bonusEndBlock, governanceBonusMultiplier, governancePerBlock, governanceTreasuryDivider, _, totalAllocationPoints, _) = getStakingSettings(e);
+    LibStaking.PoolInfo poolInfo = getStakingPoolInfo(e, poolId);
+
+    require e.block.number < 2628000 * 10; // block numbers in 10 years
+    require governancePerBlock < 100000000000000000000000; // 100k ether
+    require governanceBonusMultiplier < 100;
+    require bonusEndBlock < 2628000 * 10; // block numbers in 10 years
+    require poolInfo.allocationPoints < 100000;
+    require totalAllocationPoints > 0;
+    require governanceTreasuryDivider > 0;
+    require(treasuryAddress(e) != 0);
+    require !ubqToken.paused(e);
+    require ubqToken.totalSupply(e) < max_uint256;
+    require ubqToken.balanceOf(e, currentContract) < max_uint256;
+    require dollarManager.hasRole(e, UBQ_MINTER_ROLE(), currentContract);
+
+    updateStakingPool@withrevert(e, poolId);
+
+    assert 
+        lastReverted => poolId >= getStakingPoolsLength(e),
+        "Method reverts unexpectedly";
+}
+
+// `updateStakingPool` does not affect other pools
+rule unit_updateStakingPoolRewards_DoesNotAffectOtherPools() {
+    env e;
+    uint256 poolId;
+    uint256 otherPoolId;
+
+    require poolId != otherPoolId;
+
+    LibStaking.PoolInfo otherPoolBefore = getStakingPoolInfo(e, otherPoolId);
+
+    updateStakingPool(e, poolId);
+
+    LibStaking.PoolInfo otherPoolAfter = getStakingPoolInfo(e, otherPoolId);
+
+    assert otherPoolBefore == otherPoolAfter, "Other pools must not be affected";
 }
 
 //=====================
