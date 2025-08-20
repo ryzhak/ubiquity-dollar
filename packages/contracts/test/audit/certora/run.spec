@@ -40,7 +40,7 @@ definition isStakingFacetMethod (method f) returns bool =
 // High
 //========
 
-// sum of all `pool.allocationPoints` equals to `stakingStore.totalAllocationPoints`
+// Sum of all `pool.allocationPoints` equals to `stakingStore.totalAllocationPoints`
 rule high_allocationPointsIntegrity(method f) filtered { f -> isStakingFacetMethod(f) } {
     env e;
 
@@ -641,7 +641,7 @@ rule unit_setGovernanceBonusEndBlock_MustNotRevertUnexpectedly() {
         "Method reverts unexpectedly";
 }
 
-// `setGovernanceBonusMultiplier()` updates storage as expected
+// `setGovernanceBonusMultiplier` updates storage as expected
 rule unit_setGovernanceBonusMultiplier_MustUpdateStorageAsExpected() {
     env e;
     uint256 newGovernanceBonusMultiplier;
@@ -654,7 +654,7 @@ rule unit_setGovernanceBonusMultiplier_MustUpdateStorageAsExpected() {
     assert updatedGovernanceBonusMultiplier == newGovernanceBonusMultiplier, "Storage must be updated as expected";
 }
 
-// `setGovernanceBonusMultiplier()` must not revert unexpectedly
+// `setGovernanceBonusMultiplier` must not revert unexpectedly
 rule unit_setGovernanceBonusMultiplier_MustNotRevertUnexpectedly() {
     env e;
     uint256 newGovernanceBonusMultiplier;
