@@ -409,6 +409,77 @@ contract ProtocolTest is DiamondTestSetup {
         stakingFacet.unstake(0, 1 ether);
     }
 
+    function test_treasuryGrief() public {
+        vm.startPrank(admin);
+        stakingFacet.setGovernancePerBlock(0.0000000001 ether);
+        stakingFacet.setGovernanceTreasuryDivider(1000000000);
+        vm.stopPrank();
+
+        vm.prank(user);
+        stakingFacet.stake(0, 1 ether);
+
+        // user collects rewards each block
+        for(uint i = 0; i < 10; ++i) {
+            vm.roll(block.number + 1);
+            vm.prank(user);
+            stakingFacet.unstake(0, 0);
+        }
+
+        vm.prank(user);
+        stakingFacet.unstake(0, 1 ether);
+
+        // treasury balance == 0 while the expected value should be 1 if user did't collect rewards each block
+        console2.log("Treasury balance (UBQ):", rewardToken.balanceOf(admin));
+    }
+
+    function test_governanceTreasuryDividerCantBeZero() public {
+        vm.prank(admin);
+        stakingFacet.setGovernanceTreasuryDivider(0);
+
+        vm.prank(user);
+        stakingFacet.stake(0, 1 ether);
+    }
+
+    function test_dosAllocationPoints() public {
+        vm.prank(user);
+        stakingFacet.stake(0, 1 ether);
+
+        vm.startPrank(admin);
+        stakingFacet.updateStakingPool(
+            0, // pool id
+            0, // allocation points
+            getAvailablePoolIds()
+        );
+        vm.stopPrank();
+
+        // 10 blocks pass
+        vm.roll(block.number + 10);
+
+        // reverts while expected behavior is to unstake tokens
+        vm.prank(user);
+        stakingFacet.unstake(0, 1 ether);
+    }
+
+    function test_zeroRewardsDueToPrecisionLoss() public {
+        vm.prank(admin);
+        stakingFacet.setGovernancePerBlock(0.0000001 ether);
+
+        uint256 amount = 10_000_000 ether;
+        stakeToken.mint(user, amount);
+
+        vm.prank(user);
+        stakingFacet.stake(0, amount);
+
+        // 10 blocks pass
+        vm.roll(block.number + 10);
+
+        vm.prank(user);
+        stakingFacet.unstake(0, amount);
+
+        // UBQ balance is 0 while the expected value is 0.000001 UBQ rewards
+        console2.log("User balance (UBQ):", rewardToken.balanceOf(user));
+    }
+
     //===========
     // Fuzzing
     //===========

@@ -304,6 +304,7 @@ library LibStaking {
      * => yes, at least reentrancy of the reward token is possible in the `unstake()` method, use `nonReentrant` modifier
      * TOWRITE: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20
      * => at least fee on transfer staking tokens break calculations, check that staking and reward tokens adhere to "common" standards
+     * + when UBQ minting is paused then updating staking pool reverts
      * TOWRITE: if `user.rewardDebt` is too big then DOS on `sub(user.rewardDebt)`
      */
     function stake(uint256 poolId, uint256 amount) internal {
@@ -389,21 +390,20 @@ library LibStaking {
             .mul(stakingStore.governancePerBlock)
             .mul(pool.allocationPoints)
             .div(stakingStore.totalAllocationPoints);
-        // TOWRITE: is it possible to grief treasury on frequent pool updates?
+        // WRITTEN: is it possible to grief treasury on frequent pool updates?
         // => yes, if `governancePerBlock = 0.0000000001 ether` and `treasuryDivider is 1000000000` then
         // user is able to claim rewards each block while treasury won't accrue rewards
-        // TOWRITE: `governanceTreasuryDivider` can't be set to 0
-        // TOWRITE: if `store.treasuryAddress == address(0)` then it's a DOS (https://prover.certora.com/output/8691664/a0cd9af9145e4c5a9746f22505c54800/)
-        // TOWRITE: if `stakingStore.totalAllocationPoints == 0` but a pool exists with 0 allocation points then 
+        // WRITTEN: `governanceTreasuryDivider` can't be set to 0
+        // WRITTEN: if `store.treasuryAddress == address(0)` then it's a DOS (https://prover.certora.com/output/8691664/a0cd9af9145e4c5a9746f22505c54800/)
+        // WRITTEN: if `stakingStore.totalAllocationPoints == 0` but a pool exists with 0 allocation points then 
         // user is unable to unstake since `updateStakingPool()` reverts
-        // TOWRITE: when UBQ minting is paused then updated staking pool reverts
-        // TOWRITE: if `UBQ_MINTER_ROLE` is revoked from Diamond (via `dollarManager.hasRole`) then contract is DoSed
+        // WRITTEN: if `UBQ_MINTER_ROLE` is revoked from Diamond (via `dollarManager.hasRole`) then contract is DoSed
         stakingStore.rewardToken.mint(
             store.treasuryAddress,
             governanceReward.div(stakingStore.governanceTreasuryDivider)
         );
         stakingStore.rewardToken.mint(address(this), governanceReward);
-        // TOWRITE: if `lpSupply > governanceReward.mul(1e12)` then `pool.accumulatedGovernancePerShare = 0`
+        // WRITTEN: if `lpSupply > governanceReward.mul(1e12)` then `pool.accumulatedGovernancePerShare = 0`
         // which means user gets 0 rewards on unstaking, see test `testFuzz_ShouldGetRewards_IfAmountAndBlocksPassedNotZero`.
         // Possible solution could to increase precision from 1e12 to 1e18.
         pool.accumulatedGovernancePerShare = pool
