@@ -425,7 +425,7 @@ library LibStaking {
      * @param allocationPoints Allocation points
      * @param lpToken LP token
      * @param poolIdsToUpdate Array of pool ids where to trigger update
-     * TOWRITE: is triggering "mass update" affects calculations? => yes, "mass update" must be called on creating and updating staking pool, see test `testCreateStakingPool_AffectsCalculations_IfMassUpdateIsNotCalled`
+     * WRITTEN: is triggering "mass update" affects calculations? => yes, "mass update" must be called on creating and updating staking pool, see test `testCreateStakingPool_AffectsCalculations_IfMassUpdateIsNotCalled`
      * CHECKED: what if `allocationPoints == 0`? => ok
      * CHECKED: check that if pool is added or updated in the middle of the staking then calculations are correct,
      * see example in https://solodit.cyfrin.io/issues/h-3-wrong-call-order-for-settoppoolidswithweights-resulting-in-wrong-distribution-of-rewards-sherlock-magicsea-the-native-dex-on-the-iotaevm-git => ok
@@ -526,7 +526,7 @@ library LibStaking {
     /**
      * @notice Sets staking reward token
      * @param newRewardToken New reward token address
-     * TOWRITE: what if reward token is updated in the middle of staking? Are users able to withdraw old rewards?
+     * WRITTEN: what if reward token is updated in the middle of staking? Are users able to withdraw old rewards?
      * => No, unstaking reverts because of `transfer amount exceeds balance`, see `testSetStakingRewardToken_ShouldNotAffectCalculations` test.
      * When reward token is updated then calculation for the old reward token is saved meaning that there're no
      * enough funds for unstaking + the old reward tokens are stuck in the contract.

@@ -374,91 +374,39 @@ contract ProtocolTest is DiamondTestSetup {
         stakingFacet.createStakingPool(
             300, // allocation points
             stakeToken,
-            getEmptyPoolIds() // array of pool ids to update
+            getEmptyPoolIds() // <=== HERE UPDATE MUST BE CALLED FOR ALL EXISTING POOLS
         );
         vm.stopPrank();
 
-        vm.prank(user2);
-        stakingFacet.stake(1, 1 ether);
-
-        // 10 blocks pass
-        vm.roll(block.number + 10);
-
-        console2.log("User balance (UBQ):", rewardToken.balanceOf(user)); // 0
-        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2)); // 0
-
         vm.prank(user);
         stakingFacet.unstake(0, 1 ether);
-        vm.prank(user2);
-        stakingFacet.unstake(1, 1 ether);
 
-        console2.log("User balance (UBQ) :", rewardToken.balanceOf(user)); // expected: 12.5, got `20.0 / 4 = 5.0`
-        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2)); // 7.5
+        // If update is not called on creating the 2nd pool then user gets 2.5 UBQ rewards
+        // while the expected amount is 10 UBQ rewards
+        console2.log("User balance (UBQ):", rewardToken.balanceOf(user));
     }
 
-    function testSetStakingRewardToken_ShouldNotAffectCalculations() public {
-        vm.startPrank(admin);
-
-        vm.stopPrank();
-
+    function testSetStakingRewardToken_MustNotAffectCalculations() public {
         vm.prank(user);
         stakingFacet.stake(0, 1 ether);
 
         // 10 blocks pass
         vm.roll(block.number + 10);
 
-        vm.startPrank(admin);
-        stakingFacet.createStakingPool(
-            300, // allocation points
-            stakeToken,
-            getAvailablePoolIds() // array of pool ids to update
-        );
-        vm.stopPrank();
+        // mints 10 UBQ as rewards
+        stakingFacet.updateStakingPool(0);
 
-        vm.prank(user2);
-        stakingFacet.stake(1, 1 ether);
-
-        // 10 blocks pass
-        vm.roll(block.number + 10);
-
-        vm.startPrank(admin);
-        stakingFacet.updateStakingPool(
-            1, // pool id
-            100, // allocation points
-            getAvailablePoolIds() // array of pool ids to update
-        );
-
+        vm.prank(admin);
         stakingFacet.setStakingRewardToken(address(rewardToken2));
 
-        vm.stopPrank();
-
         // 10 blocks pass
         vm.roll(block.number + 10);
 
-        stakingFacet.updateStakingPool(0);
-        stakingFacet.updateStakingPool(1);
-
-        // mint additional 20 tokens for solvency
-        rewardToken2.mint(address(stakingFacet), 20 ether);
-
-        console2.log("User balance (UBQ):", rewardToken.balanceOf(user));
-        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2));
-        console2.log("User balance (RWD2):", rewardToken2.balanceOf(user));
-        console2.log("User2 balance (RWD2):", rewardToken2.balanceOf(user2));
-        console2.log("Contract balance (UBQ):", rewardToken.balanceOf(address(stakingFacet)));
-        console2.log("Contract balance (RWD2):", rewardToken2.balanceOf(address(stakingFacet)));
-
+        // reverts because it tries to transfer 20 RWD2 tokens while current contract rewards are
+        // - 10 UBQ
+        // - 10 RWD2
         vm.prank(user);
         stakingFacet.unstake(0, 1 ether);
-        vm.prank(user2);
-        stakingFacet.unstake(1, 1 ether);
-
-        console2.log("User balance (UBQ) :", rewardToken.balanceOf(user)); // 17.5
-        console2.log("User2 balance (UBQ):", rewardToken.balanceOf(user2)); // 12.5
-        console2.log("User balance (RWD2):", rewardToken2.balanceOf(user));
-        console2.log("User2 balance (RWD2):", rewardToken2.balanceOf(user2));
-        console2.log("Contract balance (UBQ):", rewardToken.balanceOf(address(stakingFacet)));
-        console2.log("Contract balance (RWD2):", rewardToken2.balanceOf(address(stakingFacet)));
     }
 
     //===========
