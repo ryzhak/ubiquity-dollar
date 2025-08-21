@@ -302,10 +302,11 @@ library LibStaking {
      * => `LibUbiquityPool` collateral can't be used as a staking or staking reward token, add a require statement
      * WRITTEN: is reentrancy of reward/stake token transfer possible, see: https://solodit.cyfrin.io/issues/m-17-convexmasterchefs-deposit-and-withdraw-can-be-reentered-drawing-all-reward-funds-from-the-contract-if-reward-token-allows-for-transfer-flow-control-code4rena-aura-finance-aura-finance-git?
      * => yes, at least reentrancy of the reward token is possible in the `unstake()` method, use `nonReentrant` modifier
-     * TOWRITE: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20
+     * WRITTEN: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20
      * => at least fee on transfer staking tokens break calculations, check that staking and reward tokens adhere to "common" standards
      * + when UBQ minting is paused then updating staking pool reverts
-     * TOWRITE: if `user.rewardDebt` is too big then DOS on `sub(user.rewardDebt)`
+     * CHECKED: if `user.rewardDebt` is too big then DOS on `sub(user.rewardDebt)` => seems not possible since
+     * `pool.accumulatedGovernancePerShare` always increases
      */
     function stake(uint256 poolId, uint256 amount) internal {
         StakingStorage storage stakingStore = stakingStorage();
@@ -339,7 +340,7 @@ library LibStaking {
      * @notice Unstakes LP tokens from the staking contract
      * @param poolId Pool id
      * @param amount Amount of LP tokens to unstake
-     * TOWRITE: UBQ rewards are stuck in the contract after unstake due to precision loss and there's no way 
+     * WRITTEN: UBQ rewards are stuck in the contract after unstake due to precision loss and there's no way 
      * for admin to get them, see test `testFuzz_RewardsStuckInTheContract`
      */
     function unstake(uint256 poolId, uint256 amount) internal {
