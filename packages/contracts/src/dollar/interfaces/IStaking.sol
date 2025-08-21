@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {LibStaking} from "../libraries/LibStaking.sol";
-// TOWRITE: unused import
+// WRITTEN: unused import
 import {IERC20Ubiquity} from "./IERC20Ubiquity.sol";
 
 /**

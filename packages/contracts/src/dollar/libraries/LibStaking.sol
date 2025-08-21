@@ -3,10 +3,10 @@ pragma solidity 0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-// TOWRITE: unused import
+// WRITTEN: unused import
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
-// TOWRITE: unused import
+// WRITTEN: unused import
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20Ubiquity} from "../interfaces/IERC20Ubiquity.sol";
 import {AppStorage, LibAppStorage} from "./LibAppStorage.sol";
@@ -297,10 +297,10 @@ library LibStaking {
      * @param amount Amount of LP tokens to stake
      * CHECKED: is it possible to stake/unstake/update from uninitialized pools? => no, array out of bounds
      * CHECKED: what if reward and stake tokens are equal? => fine
-     * TOWRITE: `whenNotPaused` modifier not used? => not used, should be used for stake/unstake methods
-     * TOWRITE: considering `LibUbiquityPool`, can LUSD,UBQ,UUSD be used as collateral or staked tokens?
+     * WRITTEN: `whenNotPaused` modifier not used? => not used, should be used for stake/unstake methods
+     * WRITTEN: considering `LibUbiquityPool`, can LUSD,UBQ,UUSD be used as collateral or staked tokens?
      * => `LibUbiquityPool` collateral can't be used as a staking or staking reward token, add a require statement
-     * TOWRITE: is reentrancy of reward/stake token transfer possible, see: https://solodit.cyfrin.io/issues/m-17-convexmasterchefs-deposit-and-withdraw-can-be-reentered-drawing-all-reward-funds-from-the-contract-if-reward-token-allows-for-transfer-flow-control-code4rena-aura-finance-aura-finance-git?
+     * WRITTEN: is reentrancy of reward/stake token transfer possible, see: https://solodit.cyfrin.io/issues/m-17-convexmasterchefs-deposit-and-withdraw-can-be-reentered-drawing-all-reward-funds-from-the-contract-if-reward-token-allows-for-transfer-flow-control-code4rena-aura-finance-aura-finance-git?
      * => yes, at least reentrancy of the reward token is possible in the `unstake()` method, use `nonReentrant` modifier
      * TOWRITE: check what weird stake/reward ERC20 tokens are supported in https://github.com/d-xo/weird-erc20
      * => at least fee on transfer staking tokens break calculations, check that staking and reward tokens adhere to "common" standards
