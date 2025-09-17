@@ -62,4 +62,4 @@ jobs:
         env:
           CERTORAKEY: ${{ secrets.CERTORAKEY }}
         working-directory: ./packages/contracts
-        run: certoraRun test/certora/StakingFacet.conf
+        run: certoraRun test/certora/staking.conf
