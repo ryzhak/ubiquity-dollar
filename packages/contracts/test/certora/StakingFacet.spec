@@ -35,6 +35,8 @@ definition isStakingFacetMethod (method f) returns bool =
         f.selector == sig:setStakingStartBlock(uint256).selector ||
         f.selector == sig:updateStakingPool(uint256,uint256).selector
     );
+// reentrancy status "not entered"
+definition REENTRANCY_STATUS_NOT_ENTERED() returns uint256 = 1;
 
 //========
 // High
@@ -514,6 +516,8 @@ rule unit_updateStakingPoolRewards_MustNotRevertUnexpectedly() {
     require ubqToken.totalSupply(e) == 0;
     require ubqToken.balanceOf(e, currentContract) < max_uint256;
     require dollarManager.hasRole(e, dollarManager.UBQ_MINTER_ROLE(e), currentContract);
+    require exposed_getReentrancyStatus(e) == REENTRANCY_STATUS_NOT_ENTERED();
+    require !paused(e);
 
     updateStakingPool@withrevert(e, poolId);
 
