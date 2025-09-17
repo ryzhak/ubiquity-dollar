@@ -831,14 +831,11 @@ rule unit_updateStakingPool_DoesNotAffectOtherPools() {
     uint256 otherPoolId;
     uint256 allocationPoints;
 
-    // pools are different
-    require targetPoolId != otherPoolId;
-
     LibStaking.PoolInfo otherPoolInfoBefore = getStakingPoolInfo(e, otherPoolId);
 
     updateStakingPool(e, targetPoolId, allocationPoints);
 
     LibStaking.PoolInfo otherPoolInfoAfter = getStakingPoolInfo(e, otherPoolId);
 
-    assert otherPoolInfoBefore == otherPoolInfoAfter, "Other pool must not be affected";
+    assert otherPoolInfoBefore != otherPoolInfoAfter => otherPoolId == targetPoolId, "Other pool must not be affected";
 }
