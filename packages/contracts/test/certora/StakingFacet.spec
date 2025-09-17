@@ -785,10 +785,6 @@ rule unit_updateStakingPool_MustUpdateStorageAsExpected() {
     uint256 totalAllocationPointsBefore;
     uint256 totalAllocationPointsAfter;
 
-    // at least 3 pools exist
-    require(poolId > 1);
-    require(getStakingPoolsLength(e) == poolId + 1);
-
     (_, _, _, _, _, _, totalAllocationPointsBefore, _) = getStakingSettings(e);
     LibStaking.PoolInfo poolInfoBefore = getStakingPoolInfo(e, poolId);
 
